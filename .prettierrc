@@ -1,0 +1,17 @@
+{
+  "endOfLine": "auto",
+  "semi": false,
+  "singleQuote": false,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "arrowParens": "always",
+  "bracketSpacing": false,
+  "overrides": [
+    {
+      "files": "./packages/medusa-admin-dashboard/src/**/*.{ts,tsx}",
+      "options": {
+        "plugins": ["prettier-plugin-tailwindcss"]
+      }
+    }
+  ]
+}

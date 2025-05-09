@@ -1,0 +1,62 @@
+# EditorConfig helps developers define and maintain consistent
+# coding styles between different editors and IDEs.
+# More information at https://editorconfig.org
+
+root = true
+
+# Default settings for all files
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Specific settings for TypeScript files
+[*.ts]
+indent_size = 2
+
+# Specific settings for TypeScript React (TSX) files
+[*.tsx]
+indent_size = 2
+
+# Specific settings for JavaScript files
+[*.js]
+indent_size = 2
+
+# Specific settings for JavaScript React (JSX) files
+[*.jsx]
+indent_size = 2
+
+# Specific settings for JSON files (e.g., package.json, tsconfig.json)
+[*.json]
+indent_style = space
+indent_size = 2
+
+# Specific settings for YAML files (e.g., GitHub Actions, configuration files)
+[*.yml]
+indent_style = space
+indent_size = 2
+
+# Specific settings for Markdown files
+[*.md]
+trim_trailing_whitespace = false
+
+# Override for lock files (package-lock.json, yarn.lock, pnpm-lock.yaml, etc.)
+[package-lock.json]
+indent_style = space
+indent_size = 2
+
+[yarn.lock]
+indent_style = space
+indent_size = 2
+
+[pnpm-lock.yaml]
+indent_style = space
+indent_size = 2
+
+# Special case for scripts and config files
+[*.sh]
+indent_style = space
+indent_size = 2

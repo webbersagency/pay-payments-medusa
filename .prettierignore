@@ -1,0 +1,13 @@
+.cache
+package.json
+package-lock.json
+yarn.lock
+public
+**/.git
+**/node_modules
+**/.storybook
+**/static
+apps/medusa/.env
+**/.graphql
+**/.lock
+**/.json
