@@ -1,42 +1,27 @@
 import {PayPaymentStatus} from "../core/constants"
-import {PayPaymentMethod} from "./order"
 
 /**
  * Configuration options for the Pay. payment provider
  */
 export type ProviderOptions = {
+  paymentDescription?: Record<"default" | string, string>
   atCode: string
   apiToken: string
   slCode: string
   slSecret: string
-  otherSlCodes?: Record<string, string>
-  exchangeUrl?: string
+  returnUrl: string
+  medusaUrl: string
   testMode?: boolean
-  debugMode?: boolean
-  paymentDescription?: Record<"default" | string, string>
-  /**
-   * The delay in milliseconds before processing the webhook event.
-   * @defaultValue 5000
-   */
-  webhookDelay?: number
-  /**
-   * The number of times to retry the webhook event processing in case of an error.
-   * @defaultValue 3
-   */
-  webhookRetries?: number
-  /**
-   * Set custom URL for the Pay. TGU endpoint or REST API
-   */
-  restApiUrl?: string
   tguApiUrl?: string
-  captureMode?: "automatic" | "manual"
+  otherSlCodes?: Record<string, string>
 }
 
-export type PaymentOptions = PayPaymentMethod
-
-export const PaymentProviderKeys = {
-  IDEAL: "pay-ideal",
+export type PaymentOptions = {
+  webhookUrl?: string
 }
+
+export const PAY_PROVIDER_ID = "pay"
+export const PAY_SOFTPOS_PROVIDER_ID = "pay-softpos"
 
 export type PayWebhookParams = {
   id: string

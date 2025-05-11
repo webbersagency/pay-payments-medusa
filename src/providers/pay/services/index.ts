@@ -1,1 +1,2 @@
-export {default as PayIdealService} from "./pay-ideal"
+export {default as PayProviderService} from "./pay-provider"
+export {default as PaySoftposProviderService} from "./pay-softpos-provider"

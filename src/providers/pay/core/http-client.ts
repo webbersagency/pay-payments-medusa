@@ -15,7 +15,7 @@ export class HttpClient {
     this.options_ = options
     this.logger = logger
     this.testMode = options.testMode ?? true
-    this.restApiUrl = options.restApiUrl ?? PayEnvironmentPaths.REST_API
+    this.restApiUrl = PayEnvironmentPaths.REST_API
     this.tguApiUrl = options.tguApiUrl ?? PayEnvironmentPaths.TGU_API
     this.restApiV3Url = PayEnvironmentPaths.REST_API_v3
   }

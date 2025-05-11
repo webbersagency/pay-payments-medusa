@@ -20,12 +20,10 @@ import {Logger} from "@medusajs/medusa"
 export class PayClient {
   protected readonly httpClient_: HttpClient
   protected readonly serviceId_: string
-  protected readonly exchangeUrl?: string
 
   constructor(options: ProviderOptions, logger: Logger) {
     this.httpClient_ = new HttpClient({options, logger})
     this.serviceId_ = options.slCode
-    this.exchangeUrl = options.exchangeUrl
   }
 
   /**
@@ -34,14 +32,13 @@ export class PayClient {
    * @param returnPath
    */
   async createOrder(
-    data: Omit<CreateOrder, "serviceId" | "exchangeUrl">
+    data: Omit<CreateOrder, "serviceId">
   ): Promise<OrderResponse> {
     return await this.httpClient_.tguRequest({
       endpoint: PayApiPath.ORDER_CREATE,
       data: {
         ...data,
         serviceId: this.serviceId_,
-        exchangeUrl: this.exchangeUrl,
         stats: {
           object: `${displayName}|version ${version}`,
         },
@@ -137,7 +134,6 @@ export class PayClient {
         data: {
           ...data,
           serviceId: this.serviceId_,
-          exchangeUrl: this.exchangeUrl,
         },
       })
     }

@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@medusajs/core-flows':
+        specifier: ^2.7.1
+        version: 2.7.1(@medusajs/framework@2.7.1(@medusajs/cli@2.7.1(@mikro-orm/core@6.4.3)(@mikro-orm/knex@6.4.3(@mikro-orm/core@6.4.3)(pg@8.15.6))(@mikro-orm/migrations@6.4.3(@mikro-orm/core@6.4.3)(@types/node@20.17.45)(pg@8.15.6))(@mikro-orm/postgresql@6.4.3(@mikro-orm/core@6.4.3))(awilix@8.0.1)(ioredis@5.6.1)(pg@8.15.6)(vite@5.4.19(@types/node@20.17.45)))(@mikro-orm/cli@6.4.3(pg@8.15.6))(@mikro-orm/core@6.4.3)(@mikro-orm/knex@6.4.3(@mikro-orm/core@6.4.3)(pg@8.15.6))(@mikro-orm/migrations@6.4.3(@mikro-orm/core@6.4.3)(@types/node@20.17.45)(pg@8.15.6))(@mikro-orm/postgresql@6.4.3(@mikro-orm/core@6.4.3))(awilix@8.0.1)(ioredis@5.6.1)(pg@8.15.6)(vite@5.4.19(@types/node@20.17.45)))(awilix@8.0.1)
     devDependencies:
       '@medusajs/admin-sdk':
         specifier: ^2.7.1

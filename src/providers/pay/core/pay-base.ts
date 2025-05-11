@@ -1,6 +1,9 @@
 import {
+  CustomerDTO,
   Logger,
+  OrderDTO,
   ProviderWebhookPayload,
+  SalesChannelDTO,
   WebhookActionResult,
 } from "@medusajs/framework/types"
 import {
@@ -35,13 +38,14 @@ import {
   CreateOrder,
   OrderResponse,
   PaymentOptions,
+  PayPaymentMethod,
+  PayProduct,
   ProviderOptions,
 } from "../types"
 import {PayClient} from "./pay-client"
 import crypto from "crypto"
 import {PayPaymentStatus} from "./constants"
 import getExpirationForPaymentMethod from "../utils/getExpirationForPaymentMethod"
-import {PaymentProviderContext} from "@medusajs/types/dist/payment/provider"
 
 /**
  * Dependencies injected into the service
@@ -62,18 +66,20 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   /**
    * Validates that the required options are provided
    * @param options - The options to validate
-   * @throws {MedusaError} If API key is missing
+   * @throws {MedusaError} If required config is missing
    */
   static validateOptions(options: ProviderOptions): void {
     if (
       !options.atCode ||
       !options.apiToken ||
       !options.slCode ||
-      !options.slSecret
+      !options.slSecret ||
+      !options.returnUrl ||
+      !options.medusaUrl
     ) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "AT Code, API Token, SL Code, SL Secret are required in the provider's options."
+        "AT Code, API Token, SL Code, SL Secret, Return URL & Medusa URL are required in the provider's options."
       )
     }
   }
@@ -89,7 +95,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     this.logger_ = container.logger
     this.options_ = options
     this.debug_ =
-      options.debugMode ||
+      options.testMode ||
       process.env.NODE_ENV === "development" ||
       process.env.NODE_ENV === "test" ||
       false
@@ -99,28 +105,132 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
   abstract get paymentCreateOptions(): PaymentOptions
 
-  normalizePaymentCreateParams(
-    data?: Record<string, unknown>,
-    context?: PaymentProviderContext
-  ): Partial<CreateOrder> {
-    const res = {} as Partial<CreateOrder>
+  getPaymentDescription = (
+    order: OrderDTO & {sales_channel: SalesChannelDTO}
+  ) => {
+    const language = order.metadata?.locale as string
+    const paymentDescriptions = this.options_?.paymentDescription
 
-    res.description = (data?.payment_description ??
-      this.options_?.paymentDescription) as string
+    const displayId = order.display_id.toString()
+    let description = order.sales_channel?.name
+      ? `${order.sales_channel.name} - #${displayId}`
+      : `#${displayId}`
 
-    res.paymentMethod = this.paymentCreateOptions
-
-    res.returnUrl = data?.return_url as string | undefined
-
-    res.expire = getExpirationForPaymentMethod(res.paymentMethod)
-
-    if (context?.idempotency_key) {
-      res.transferData = {
-        idempotency_key: context.idempotency_key,
-      }
+    if (paymentDescriptions) {
+      description =
+        language && paymentDescriptions?.[language]
+          ? paymentDescriptions[language]
+          : (paymentDescriptions?.default ?? "[display_id]")
+      description = description.replace("[display_id]", displayId)
     }
 
-    return res
+    return description
+  }
+
+  createPayOrderPayload(
+    order: OrderDTO & {customer: CustomerDTO; sales_channel: SalesChannelDTO},
+    paymentMethod?: PayPaymentMethod
+  ): Omit<CreateOrder, "serviceId"> {
+    const currency = order.currency_code.toUpperCase()
+
+    const products: PayProduct[] = order.items!.map((item) => ({
+      id: item.variant_sku || item.variant_id || item.id,
+      description: `${item.product_title} - ${item.variant_title}`,
+      type: "ARTICLE",
+      price: {
+        value: (item.total.valueOf() as number) * 100,
+        currency,
+      },
+      quantity: item.quantity,
+      vatPercentage: item.tax_lines?.[0]?.rate,
+    }))
+
+    const shippingTotalInclTax =
+      (order.shipping_total.valueOf() as number) +
+      (order.shipping_tax_total.valueOf() as number)
+
+    const discount = order.discount_total.valueOf() as number
+
+    if (discount > 0) {
+      products.push({
+        type: "DISCOUNT",
+        id: "DISCOUNT",
+        description: "Discount",
+        price: {
+          value: discount * -1,
+          currency,
+        },
+        quantity: 1,
+      })
+    }
+
+    if (shippingTotalInclTax > 0) {
+      products.push({
+        type: "SHIPPING",
+        id: "SHIPPING",
+        description: "Shipping",
+        price: {
+          value: shippingTotalInclTax,
+          currency,
+        },
+        quantity: 1,
+      })
+    }
+
+    const payload = {
+      reference: order.display_id.toString(),
+      description: this.getPaymentDescription(order),
+      paymentMethod,
+      returnUrl: this.options_.returnUrl,
+      expire: paymentMethod
+        ? getExpirationForPaymentMethod(paymentMethod)
+        : undefined,
+      exchangeUrl: this.paymentCreateOptions.webhookUrl,
+      amount: {
+        value: Math.round((order.total.valueOf() as number) * 100),
+        currency,
+      },
+      customer: {
+        firstname:
+          order.customer?.first_name || order.billing_address?.first_name,
+        lastname: order.customer?.last_name || order.billing_address?.last_name,
+        ipAddress: order.metadata?.ip as string,
+        phone: order.customer?.phone || order.billing_address?.phone,
+        email: order.email,
+        locale: order.metadata?.locale?.toString()?.toUpperCase() ?? "EN",
+        reference: order.customer?.id,
+      },
+      order: {
+        countryCode: order.billing_address?.country_code?.toUpperCase(),
+        invoiceAddress: {
+          firstName: order.billing_address?.first_name,
+          lastName: order.billing_address?.last_name,
+          street: order.billing_address?.address_1,
+          streetNumber: order.billing_address?.address_2,
+          zipCode: order.billing_address?.postal_code,
+          city: order.billing_address?.city,
+          country: order.billing_address?.country_code?.toUpperCase(),
+        },
+        deliveryAddress: {
+          firstName: order.shipping_address?.first_name,
+          lastName: order.shipping_address?.last_name,
+          street: order.shipping_address?.address_1,
+          streetNumber: order.shipping_address?.address_2,
+          zipCode: order.shipping_address?.postal_code,
+          city: order.shipping_address?.city,
+          country: order.shipping_address?.country_code?.toUpperCase(),
+        },
+        products,
+      },
+    }
+
+    if (this.options_.testMode) {
+      try {
+        this.logger_.debug(JSON.stringify(payload))
+      } catch (e) {}
+    }
+
+    return payload
   }
 
   /**
@@ -134,132 +244,26 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     data,
     currency_code,
   }: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
-    const normalizedParams = this.normalizePaymentCreateParams(data, context)
-
-    console.log("initiatePayment")
-    console.log("data", data)
-    console.log("context", context)
-
-    try {
-      const data = await this.client_
-        .createOrder({
-          ...normalizedParams,
-          amount: {
-            value: parseInt(amount.toString()),
-            currency: currency_code.toUpperCase(),
-          },
-
-          customer: {
-            firstName: context?.customer?.first_name,
-            lastName: context?.customer?.last_name,
-            // ipAddress: data?.context?.ip as string,
-            phone:
-              context?.customer?.phone ||
-              context?.customer?.billing_address?.phone,
-            email: context?.customer?.email,
-            // locale: language.toUpperCase(),
-            reference: context?.customer?.id,
-          },
-          order: {
-            countryCode:
-              context?.customer?.billing_address?.country_code?.toUpperCase(),
-            invoiceAddress: {
-              firstName: context?.customer?.first_name,
-              lastName: context?.customer?.last_name,
-              street: context?.customer?.billing_address?.address_1,
-              streetNumber: context?.customer?.billing_address?.address_2,
-              zipCode: context?.customer?.billing_address?.postal_code,
-              city: context?.customer?.billing_address?.city,
-              country:
-                context?.customer?.billing_address?.country_code?.toUpperCase(),
-            },
-            // deliveryAddress: {
-            //   firstName: order.shipping_address?.first_name,
-            //   lastName: order.shipping_address?.last_name,
-            //   street: order.shipping_address?.address_1,
-            //   streetNumber: order.shipping_address?.address_2,
-            //   zipCode: order.shipping_address?.postal_code,
-            //   city: order.shipping_address?.city,
-            //   country: order.shipping_address?.country_code?.toUpperCase()
-            // },
-            // products
-          },
-
-          // billingAddress: {
-          //   streetAndNumber: context?.customer?.billing_address?.address_1 || "",
-          //   postalCode: context?.customer?.billing_address?.postal_code || "",
-          //   city: context?.customer?.billing_address?.city || "",
-          //   country: context?.customer?.billing_address?.country_code || "",
-          // },
-          // billingEmail: context?.customer?.email || "",
-        })
-        .then((payment) => {
-          return payment as Record<string, any>
-        })
-        .catch((error) => {
-          this.logger_.error(`Pay. payment creation failed: ${error.message}`)
-          throw new MedusaError(MedusaError.Types.INVALID_DATA, error.message)
-        })
-
-      this.debug_ &&
-        this.logger_.info(
-          `Pay. payment ${data.id} successfully created with amount ${amount}`
-        )
-
-      return {
-        id: data.id,
-        data: data,
-      }
-    } catch (error) {
-      this.logger_.error(`Error initiating Pay. payment: ${error.message}`)
-      throw error
-    }
+    return {data: {}, id: crypto.randomUUID()}
   }
 
   /**
-   * Checks if a payment is authorized with Pay.
+   * Authorize the Pay. payment
    * @param input - The payment authorization input
    * @returns The authorization result
    */
   async authorizePayment(
     input: AuthorizePaymentInput
   ): Promise<AuthorizePaymentOutput> {
-    const id = input.data?.id
+    console.log("authorizePayment", input)
 
-    if (!id) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        "Payment ID is required"
-      )
+    if (input.data?.orderId) {
+      const {status} = await this.getPaymentStatus(input)
+
+      return {data: input.data, status}
     }
 
-    try {
-      const {status} = await this.getPaymentStatus({
-        data: {
-          id,
-        },
-      })
-
-      if (!["captured", "authorized", "paid"].includes(status)) {
-        throw new MedusaError(
-          MedusaError.Types.INVALID_DATA,
-          `Payment is not authorized: current status is ${status}`
-        )
-      }
-
-      this.debug_ &&
-        this.logger_.info(
-          `Pay. payment ${id} successfully authorized with status ${status}`
-        )
-
-      return {
-        data: input.data,
-        status,
-      }
-    } catch (error) {
-      this.logger_.error(`Error authorizing payment ${id}: ${error.message}`)
-      throw error
-    }
+    return {data: {}, status: PaymentSessionStatus.AUTHORIZED}
   }
 
   /**
@@ -270,7 +274,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async capturePayment(
     input: CapturePaymentInput
   ): Promise<CapturePaymentOutput> {
-    const id = input.data?.id as string
+    console.log("capturePayment", input)
+
+    const id = input.data?.orderId as string
 
     if (!id) {
       throw new MedusaError(
@@ -287,10 +293,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       })) as unknown as {data: OrderResponse}
 
       // If the Pay order is set to authorize we need to capture the order in Pay.
-      if (
-        data?.status?.code === PayPaymentStatus.AUTHORIZE &&
-        this.options_.captureMode === "manual"
-      ) {
+      if (data?.status?.code === PayPaymentStatus.AUTHORIZE) {
         await this.client_.captureOrder(id)
       }
 
@@ -335,7 +338,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The refund result
    */
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentOutput> {
-    const id = input.data?.id as string
+    console.log("refundPayment", input)
+
+    const id = input.data?.orderId as string
 
     if (!id) {
       throw new MedusaError(
@@ -364,7 +369,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
       const refund = await this.client_.refundPayment(id, {
         amount: {
-          value: parseInt(value.toString()),
+          value: parseInt(value.toString()) * 100,
           currency: currency.toUpperCase(),
         },
       })
@@ -391,7 +396,13 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The cancellation result
    */
   async cancelPayment(input: CancelPaymentInput): Promise<CancelPaymentOutput> {
-    const {id} = input.data as Record<string, any>
+    console.log("cancelPayment", input)
+
+    const id = input.data?.orderId as string
+
+    if (!id) {
+      return {}
+    }
 
     try {
       const payment = await this.client_.getOrder(id)
@@ -433,6 +444,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The deletion result
    */
   async deletePayment(input: DeletePaymentInput): Promise<DeletePaymentOutput> {
+    console.log("deletePayment", input)
+
     return this.cancelPayment(input)
   }
 
@@ -444,15 +457,21 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async getPaymentStatus(
     input: GetPaymentStatusInput
   ): Promise<GetPaymentStatusOutput> {
+    console.log("getPaymentStatus", input)
+
     const id = input.data?.id as string
 
     try {
       const {status} = await this.client_.getTransaction(id)
 
-      // Also see Pay. status codes: https://developer.pay.nl/docs/transaction-statuses#after-processing-statuses
+      /**
+       * Also see Pay. status codes: https://developer.pay.nl/docs/transaction-statuses#after-processing-statuses
+       * Pay. payments should always go to authorized, so we can continue creating the order.
+       * This is required for Buy-now-pay-later options, where it can take some time before
+       * a paid status is reached.
+       */
       const statusMap = {
-        // Pending Statuses
-        [PayPaymentStatus.INIT]: PaymentSessionStatus.REQUIRES_MORE,
+        [PayPaymentStatus.INIT]: PaymentSessionStatus.PENDING,
         //[PayPaymentStatus.PENDING_20]: PaymentSessionStatus.REQUIRES_MORE,
         [PayPaymentStatus.PENDING_50]: PaymentSessionStatus.PENDING,
         [PayPaymentStatus.PENDING_90]: PaymentSessionStatus.PENDING,
@@ -498,6 +517,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async retrievePayment(
     input: RetrievePaymentInput
   ): Promise<RetrievePaymentOutput> {
+    console.log("retrievePayment", input)
+
     const id = input.data?.id as string
 
     try {
@@ -527,34 +548,35 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The updated payment details
    */
   async updatePayment(input: UpdatePaymentInput): Promise<UpdatePaymentOutput> {
-    this.debug_ &&
-      this.logger_.info(
-        "Note: Pay. does not allow updating amounts on an existing payment. \n" +
-          "Check https://developer.pay.nl/reference/api_update_order-1 for allowed updates."
-      )
+    console.log("updatePayment", input)
 
-    const {id, reference, description} = input.data as {
-      id: string
-      reference?: string
-      description?: string
-    }
+    // If the Pay data is passed from the order created hook, only then we update
+    // the session data.
+    const payload = input.data?.payload as Omit<
+      CreateOrder,
+      "serviceId" | "returnUrl"
+    >
 
-    try {
-      const data = await this.client_.updateOrder(id, {
-        reference,
-        description,
-      })
+    if (payload) {
+      try {
+        const data = await this.client_.createOrder(payload).catch((error) => {
+          this.logger_.error(`Pay. payment creation failed: ${error.message}`)
+          throw new MedusaError(MedusaError.Types.INVALID_DATA, error.message)
+        })
 
-      this.debug_ &&
-        this.logger_.info(`Pay. payment ${id} successfully updated`)
+        this.debug_ &&
+          this.logger_.info(
+            `Pay. payment ${data.id} successfully created with amount ${payload.amount.currency} ${payload.amount.value}`
+          )
 
-      return {
-        data: data as Record<string, any>,
+        return {data: data as Record<string, any>}
+      } catch (error) {
+        this.logger_.error(`Error initiating Pay. payment: ${error.message}`)
+        throw error
       }
-    } catch (error) {
-      this.logger_.error(`Error updating Pay. payment ${id}: ${error.message}`)
-      throw error
     }
+
+    return {data: {}}
   }
 
   get keyMap(): Record<string, string> {
