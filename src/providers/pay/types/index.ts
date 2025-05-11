@@ -20,8 +20,10 @@ export type PaymentOptions = {
   webhookUrl?: string
 }
 
-export const PAY_PROVIDER_ID = "pay"
-export const PAY_SOFTPOS_PROVIDER_ID = "pay-softpos"
+export const PaymentProviderKeys = {
+  PAY: "pay",
+  SOFTPOS: "pay-softpos",
+}
 
 export type PayWebhookParams = {
   id: string

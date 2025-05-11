@@ -20,7 +20,6 @@ import {
   GetPaymentStatusOutput,
   InitiatePaymentInput,
   InitiatePaymentOutput,
-  MedusaContainer,
   RefundPaymentInput,
   RefundPaymentOutput,
   RetrievePaymentInput,
@@ -30,7 +29,6 @@ import {
 } from "@medusajs/types"
 import {
   AbstractPaymentProvider,
-  ContainerRegistrationKeys,
   MedusaError,
   MedusaErrorTypes,
   PaymentActions,
@@ -91,10 +89,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @param container - The dependency container
    * @param options - Configuration options
    */
-  constructor(container: MedusaContainer, options: ProviderOptions) {
+  constructor(container, options: ProviderOptions) {
     super(container, options)
 
-    this.logger_ = container.resolve(ContainerRegistrationKeys.LOGGER)
+    this.logger_ = container.logger
     this.options_ = options
     this.debug_ =
       options.testMode ||
@@ -131,6 +129,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
   createPayOrderPayload(
     order: OrderDTO & {customer: CustomerDTO; sales_channel: SalesChannelDTO},
+    session_id: string,
     paymentMethod?: PayPaymentMethod
   ): Omit<CreateOrder, "serviceId"> {
     const currency = order.currency_code.toUpperCase()
@@ -140,18 +139,16 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       description: `${item.product_title} - ${item.variant_title}`,
       type: "ARTICLE",
       price: {
-        value: (item.total.valueOf() as number) * 100,
+        value: Math.round(
+          ((item.original_total.valueOf() as number) / item.quantity) * 100
+        ),
         currency,
       },
       quantity: item.quantity,
       vatPercentage: item.tax_lines?.[0]?.rate,
     }))
 
-    const shippingTotalInclTax =
-      (order.shipping_total.valueOf() as number) +
-      (order.shipping_tax_total.valueOf() as number)
-
-    const discount = order.discount_total.valueOf() as number
+    const discount = (order.discount_total.valueOf() as number) * 100
 
     if (discount > 0) {
       products.push({
@@ -166,13 +163,15 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       })
     }
 
-    if (shippingTotalInclTax > 0) {
+    const shippingTotal = (order.shipping_total.valueOf() as number) * 100
+
+    if (shippingTotal > 0) {
       products.push({
         type: "SHIPPING",
         id: "SHIPPING",
         description: "Shipping",
         price: {
-          value: shippingTotalInclTax,
+          value: shippingTotal,
           currency,
         },
         quantity: 1,
@@ -188,6 +187,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         ? getExpirationForPaymentMethod(paymentMethod)
         : undefined,
       exchangeUrl: this.paymentCreateOptions.webhookUrl,
+      transferData: {
+        session_id,
+      },
       amount: {
         value: Math.round((order.total.valueOf() as number) * 100),
         currency,
@@ -246,7 +248,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     data,
     currency_code,
   }: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
-    return {data: {}, id: crypto.randomUUID()}
+    return {
+      data: {session_id: data?.session_id as string},
+      id: crypto.randomUUID(),
+    }
   }
 
   /**
@@ -265,7 +270,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       return {data: input.data, status}
     }
 
-    return {data: {}, status: PaymentSessionStatus.AUTHORIZED}
+    return {data: input.data, status: PaymentSessionStatus.AUTHORIZED}
   }
 
   /**
@@ -599,14 +604,32 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   ): Promise<WebhookActionResult> {
     const {data, rawData, headers} = payload
 
-    console.log("payload", payload)
-
     try {
-      let orderId: string | null = null
+      let payment: OrderResponse | null = null
 
+      // For the legacy Pay. webhooks no header signature can be done and only
+      // order_id should be used to retrieve the payment.
       if (data.action === "new_ppt") {
-        orderId = data.order_id as string
+        const {data: paymentData} = (await this.retrievePayment({
+          data: {
+            id: data.order_id,
+          },
+        }).catch((e) => {
+          throw new MedusaError(MedusaError.Types.NOT_FOUND, e.message)
+        })) as unknown as {data: OrderResponse}
+
+        if (!payment) {
+          throw new MedusaError(
+            MedusaError.Types.NOT_FOUND,
+            "Payment not found"
+          )
+        }
+
+        payment = paymentData
       } else {
+        // For new webhooks from Pay., check the signature. If valid, the payload
+        // will already contain the payment object, so no additional retrieval
+        // of the payment is required.
         const signatureMethod = headers["signature-method"] as string
         const signatureKeyId = headers["signature-keyid"] as string
         const signatureAlgorithm =
@@ -646,62 +669,63 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         }
 
         if (data.type === "order") {
-          orderId = (data.object as any).reference
+          payment = data.object as OrderResponse
         }
       }
-
-      if (!orderId) {
-        throw new MedusaError(MedusaError.Types.NOT_FOUND, "Payment not found")
-      }
-
-      const {data: payment} = (await this.retrievePayment({
-        data: {
-          id: orderId,
-        },
-      }).catch((e) => {
-        throw new MedusaError(MedusaError.Types.NOT_FOUND, e.message)
-      })) as unknown as {data: OrderResponse}
 
       if (!payment) {
         throw new MedusaError(MedusaError.Types.NOT_FOUND, "Payment not found")
       }
 
       const baseData = {
-        session_id: (payment?.transferData as Record<string, any>)
-          ?.idempotency_key,
-        amount: new BigNumber(payment?.amount?.value),
+        session_id: payment.transferData.session_id,
+        amount: payment.amount.value / 100,
       }
 
-      switch (payment?.status?.code) {
-        case PayPaymentStatus.AUTHORIZE:
-          return {
-            action: PaymentActions.AUTHORIZED,
-            data: baseData,
-          }
+      console.log("payment.status.code", payment.status.code)
+      console.log("baseData", baseData)
+
+      switch (payment.status.code) {
         case PayPaymentStatus.PAID:
           return {
             action: PaymentActions.SUCCESSFUL,
             data: baseData,
           }
-        case PayPaymentStatus.EXPIRED:
-        case PayPaymentStatus.FAILURE:
-          return {
-            action: PaymentActions.FAILED,
-            data: baseData,
-          }
-        case PayPaymentStatus.CANCEL:
-          return {
-            action: PaymentActions.CANCELED,
-            data: baseData,
-          }
+        case PayPaymentStatus.INIT:
+        case PayPaymentStatus.PENDING_20:
+        case PayPaymentStatus.PENDING_50:
         case PayPaymentStatus.PENDING_90:
+        case PayPaymentStatus.PENDING_98:
+        case PayPaymentStatus.VERIFY:
           return {
             action: PaymentActions.PENDING,
             data: baseData,
           }
-        case PayPaymentStatus.INIT:
+        case PayPaymentStatus.CANCEL:
+        case PayPaymentStatus.EXPIRED:
+        case PayPaymentStatus.DENIED_64:
+        case PayPaymentStatus.DENIED_63:
+        case PayPaymentStatus.CANCEL_61:
+        case PayPaymentStatus.CHARGEBACK:
+          return {
+            action: PaymentActions.CANCELED,
+            data: baseData,
+          }
+        case PayPaymentStatus.FAILURE:
+        case PayPaymentStatus.PAID_CHECKAMOUNT:
+          return {
+            action: PaymentActions.FAILED,
+            data: baseData,
+          }
+        case PayPaymentStatus.PARTIAL_PAYMENT:
+        case PayPaymentStatus.PARTLY_CAPTURED:
           return {
             action: PaymentActions.REQUIRES_MORE,
+            data: baseData,
+          }
+        case PayPaymentStatus.AUTHORIZE:
+          return {
+            action: PaymentActions.AUTHORIZED,
             data: baseData,
           }
         default:
@@ -717,7 +741,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
       // Even with errors, try to construct a valid response if we have the payment
       const {data: payment} = await this.retrievePayment({
-        data: {id: data.id},
+        data: {id: data.orderId},
       }).catch(() => ({data: null}))
 
       if (payment) {
