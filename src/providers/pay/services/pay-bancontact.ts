@@ -1,22 +1,19 @@
 import PayBase from "../core/pay-base"
 import {PaymentOptions, PaymentProviderKeys} from "../types"
 
-class PayProviderService extends PayBase {
-  static identifier = PaymentProviderKeys.PAY_HOSTED_CHECKOUT
-
-  constructor(_, options) {
-    super(_, options)
-  }
+class PayBancontactService extends PayBase {
+  static identifier = PaymentProviderKeys.BAN_CONTACT
 
   get paymentCreateOptions(): PaymentOptions {
     return {
+      method_id: 436,
       webhookUrl:
         this.options_.medusaUrl +
         "/hooks/payment/" +
-        PaymentProviderKeys.PAY_HOSTED_CHECKOUT +
+        PaymentProviderKeys.BAN_CONTACT +
         "_pay",
     }
   }
 }
 
-export default PayProviderService
+export default PayBancontactService

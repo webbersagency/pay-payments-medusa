@@ -1,2 +1,5 @@
+export {default as PayBancontactService} from "./pay-bancontact"
+export {default as PayCreditcardService} from "./pay-creditcard"
+export {default as PayIdealService} from "./pay-ideal"
 export {default as PayProviderService} from "./pay-provider"
-export {default as PaySoftposProviderService} from "./pay-softpos-provider"
+export {default as PaySoftposService} from "./pay-softpos"

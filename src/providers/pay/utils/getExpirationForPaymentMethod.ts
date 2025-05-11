@@ -8,7 +8,7 @@ function getExpirationForPaymentMethod(paymentMethod: PayPaymentMethod) {
 
   if (
     bnplPaymentMethods[paymentMethod?.id] &&
-    // Exclude SprayPay from here
+    // Exclude SprayPay
     paymentMethod.id !== 1987
   ) {
     return "+30 minutes"

@@ -1,18 +1,19 @@
 import PayBase from "../core/pay-base"
 import {PaymentOptions, PaymentProviderKeys} from "../types"
 
-class PaySoftposProviderService extends PayBase {
-  static identifier = PaymentProviderKeys.SOFTPOS
+class PayIdealService extends PayBase {
+  static identifier = PaymentProviderKeys.IDEAL
 
   get paymentCreateOptions(): PaymentOptions {
     return {
+      method_id: 10,
       webhookUrl:
         this.options_.medusaUrl +
         "/hooks/payment/" +
-        PaymentProviderKeys.SOFTPOS +
+        PaymentProviderKeys.IDEAL +
         "_pay",
     }
   }
 }
 
-export default PaySoftposProviderService
+export default PayIdealService

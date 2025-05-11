@@ -125,7 +125,8 @@ completeCartWorkflow.hooks.orderCreated(
             payload: payProviderService.createPayOrderPayload(
               order,
               payPaymentSession.data?.session_id as string,
-              payPaymentSession.data?.paymentMethod as PayPaymentMethod
+              payPaymentSession.data
+                ?.paymentMethodInput as PayPaymentMethod["input"]
             ),
           },
           currency_code: payPaymentSession.currency_code,

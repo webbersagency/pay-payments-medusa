@@ -46,6 +46,7 @@ import {PayClient} from "./pay-client"
 import crypto from "crypto"
 import {PayPaymentStatus} from "./constants"
 import getExpirationForPaymentMethod from "../utils/getExpirationForPaymentMethod"
+import Pay from "../index"
 
 /**
  * Dependencies injected into the service
@@ -130,7 +131,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   createPayOrderPayload(
     order: OrderDTO & {customer: CustomerDTO; sales_channel: SalesChannelDTO},
     session_id: string,
-    paymentMethod?: PayPaymentMethod
+    paymentMethodInput?: PayPaymentMethod["input"]
   ): Omit<CreateOrder, "serviceId"> {
     const currency = order.currency_code.toUpperCase()
 
@@ -176,6 +177,15 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         },
         quantity: 1,
       })
+    }
+
+    let paymentMethod: PayPaymentMethod | undefined
+
+    if (this.paymentCreateOptions.method_id) {
+      paymentMethod = {
+        id: this.paymentCreateOptions.method_id,
+        input: paymentMethodInput,
+      }
     }
 
     const payload = {

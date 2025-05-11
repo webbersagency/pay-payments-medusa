@@ -1,4 +1,5 @@
 import {PayPaymentStatus} from "../core/constants"
+import {PayPaymentMethod} from "./order"
 
 /**
  * Configuration options for the Pay. payment provider
@@ -17,11 +18,15 @@ export type ProviderOptions = {
 }
 
 export type PaymentOptions = {
+  method_id?: number
   webhookUrl?: string
 }
 
 export const PaymentProviderKeys = {
-  PAY: "pay",
+  PAY_HOSTED_CHECKOUT: "pay-hosted-checkout",
+  BAN_CONTACT: "pay-bancontact",
+  CREDITCARD: "pay-creditcard-group",
+  IDEAL: "pay-ideal",
   SOFTPOS: "pay-softpos",
 }
 
