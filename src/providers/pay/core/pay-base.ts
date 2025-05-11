@@ -20,6 +20,7 @@ import {
   GetPaymentStatusOutput,
   InitiatePaymentInput,
   InitiatePaymentOutput,
+  MedusaContainer,
   RefundPaymentInput,
   RefundPaymentOutput,
   RetrievePaymentInput,
@@ -29,6 +30,7 @@ import {
 } from "@medusajs/types"
 import {
   AbstractPaymentProvider,
+  ContainerRegistrationKeys,
   MedusaError,
   MedusaErrorTypes,
   PaymentActions,
@@ -89,10 +91,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @param container - The dependency container
    * @param options - Configuration options
    */
-  constructor(container: InjectedDependencies, options: ProviderOptions) {
+  constructor(container: MedusaContainer, options: ProviderOptions) {
     super(container, options)
 
-    this.logger_ = container.logger
+    this.logger_ = container.resolve(ContainerRegistrationKeys.LOGGER)
     this.options_ = options
     this.debug_ =
       options.testMode ||

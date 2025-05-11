@@ -9,13 +9,11 @@ import {
   IPaymentModuleService,
   MedusaContainer,
   PaymentCollectionDTO,
-  PaymentDTO,
   PaymentSessionDTO,
 } from "@medusajs/types"
 import {CustomerDTO, OrderDTO, SalesChannelDTO} from "@medusajs/framework/types"
 import PayProviderService from "../../providers/pay/services/pay-provider"
-import {BigNumberInput} from "@medusajs/types/dist/totals"
-import {PaymentProviderContext} from "@medusajs/types/dist/payment/provider"
+import {PayPaymentMethod, ProviderOptions} from "../../providers/pay/types"
 
 type OrderQueryResult = OrderDTO & {
   customer: CustomerDTO
@@ -42,7 +40,8 @@ completeCartWorkflow.hooks.orderCreated(
     )
 
     const payProviderOptions = (configModule.modules!
-      .payment as any)!.options!.providers!.find((p) => p.id === "pay").options
+      .payment as any)!.options!.providers!.find((p) => p.id === "pay")
+      .options as ProviderOptions
 
     const {
       data: [order],
@@ -114,7 +113,6 @@ completeCartWorkflow.hooks.orderCreated(
       )
 
       const payProviderService = new PayProviderService(
-        // @ts-ignore
         container,
         payProviderOptions
       )
@@ -125,18 +123,13 @@ completeCartWorkflow.hooks.orderCreated(
           data: {
             ...(payPaymentSession.data ?? {}),
             payload: payProviderService.createPayOrderPayload(
-              order
-              // Inject payment method from frontend data, i.e.:
-              // {method: 10}
+              order,
+              payPaymentSession.data?.paymentMethod as PayPaymentMethod
             ),
           },
           currency_code: payPaymentSession.currency_code,
           amount: payPaymentSession.amount,
         })
-
-      console.log(updatedPaymentSession)
-
-      console.log("Update payment", updatedPaymentSession.payment)
 
       if (updatedPaymentSession.payment?.id) {
         await paymentModuleService.updatePayment({

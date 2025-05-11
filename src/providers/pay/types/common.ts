@@ -94,6 +94,8 @@ export interface PayCheckoutOption {
       image: string
     }[]
     settings: object[] | null
+    minAmount: number | null
+    maxAmount: number | null
   }[]
   requiredFields: {
     fieldName: string

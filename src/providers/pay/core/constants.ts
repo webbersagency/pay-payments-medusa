@@ -1,3 +1,11 @@
+export type PayCacheKeyValuesType =
+  (typeof PAY_CACHE_KEY)[keyof typeof PAY_CACHE_KEY]
+
+export const PAY_CACHE_KEY = {
+  CONFIG: "pay_config_cache",
+  SALES_CHANNEL_OPTIONS: "pay_sales_channel_options",
+} as const
+
 export const PayEnvironmentPaths = {
   REST_API: "https://rest.pay.nl/v2",
   TGU_API: "https://connect.pay.nl/v1",

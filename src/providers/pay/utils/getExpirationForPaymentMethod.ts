@@ -1,7 +1,7 @@
 import {PayPaymentMethod} from "../types"
 import {bnplPaymentMethods, regionalPaymentMethods} from "./paymentMethodMap"
 
-const getExpirationForPaymentMethod = (paymentMethod: PayPaymentMethod) => {
+function getExpirationForPaymentMethod(paymentMethod: PayPaymentMethod) {
   if (regionalPaymentMethods[paymentMethod?.id]) {
     return "+15 minutes"
   }
