@@ -192,7 +192,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       reference: order.display_id.toString(),
       description: this.getPaymentDescription(order),
       paymentMethod,
-      returnUrl: this.options_.returnUrl,
+      returnUrl: `${this.options_.returnUrl}?locale=${order.metadata?.locale?.toString()?.toLowerCase()}&orderId=${order.id}`,
       expire: paymentMethod
         ? getExpirationForPaymentMethod(paymentMethod)
         : undefined,
