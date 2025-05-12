@@ -51,6 +51,8 @@ completeCartWorkflow.hooks.orderCreated(
         fields: [
           "id",
           "display_id",
+          "metadata",
+          "email",
           "total",
           "currency_code",
           "subtotal",

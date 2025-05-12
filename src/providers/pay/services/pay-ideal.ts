@@ -6,7 +6,7 @@ class PayIdealService extends PayBase {
 
   get paymentCreateOptions(): PaymentOptions {
     return {
-      method_id: 10,
+      methodId: 10,
       webhookUrl:
         this.options_.medusaUrl +
         "/hooks/payment/" +

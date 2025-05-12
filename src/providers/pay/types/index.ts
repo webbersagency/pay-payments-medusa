@@ -18,7 +18,7 @@ export type ProviderOptions = {
 }
 
 export type PaymentOptions = {
-  method_id?: number
+  methodId?: number
   webhookUrl?: string
 }
 

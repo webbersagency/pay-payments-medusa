@@ -181,9 +181,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
     let paymentMethod: PayPaymentMethod | undefined
 
-    if (this.paymentCreateOptions.method_id) {
+    if (typeof this.paymentCreateOptions.methodId !== "undefined") {
       paymentMethod = {
-        id: this.paymentCreateOptions.method_id,
+        id: this.paymentCreateOptions.methodId,
         input: paymentMethodInput,
       }
     }

@@ -6,7 +6,7 @@ class PayBancontactService extends PayBase {
 
   get paymentCreateOptions(): PaymentOptions {
     return {
-      method_id: 436,
+      methodId: 436,
       webhookUrl:
         this.options_.medusaUrl +
         "/hooks/payment/" +
