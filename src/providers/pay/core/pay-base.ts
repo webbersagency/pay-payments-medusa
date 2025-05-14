@@ -272,8 +272,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async authorizePayment(
     input: AuthorizePaymentInput
   ): Promise<AuthorizePaymentOutput> {
-    console.log("authorizePayment", input)
-
     if (input.data?.orderId) {
       const {status} = await this.getPaymentStatus(input)
 
@@ -291,8 +289,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async capturePayment(
     input: CapturePaymentInput
   ): Promise<CapturePaymentOutput> {
-    console.log("capturePayment", input)
-
     const id = input.data?.orderId as string
 
     if (!id) {
@@ -355,8 +351,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The refund result
    */
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentOutput> {
-    console.log("refundPayment", input)
-
     const id = input.data?.orderId as string
 
     if (!id) {
@@ -413,8 +407,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The cancellation result
    */
   async cancelPayment(input: CancelPaymentInput): Promise<CancelPaymentOutput> {
-    console.log("cancelPayment", input)
-
     const id = input.data?.orderId as string
 
     if (!id) {
@@ -461,8 +453,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The deletion result
    */
   async deletePayment(input: DeletePaymentInput): Promise<DeletePaymentOutput> {
-    console.log("deletePayment", input)
-
     return this.cancelPayment(input)
   }
 
@@ -474,8 +464,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async getPaymentStatus(
     input: GetPaymentStatusInput
   ): Promise<GetPaymentStatusOutput> {
-    console.log("getPaymentStatus", input)
-
     const id = input.data?.id as string
 
     try {
@@ -534,9 +522,14 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async retrievePayment(
     input: RetrievePaymentInput
   ): Promise<RetrievePaymentOutput> {
-    console.log("retrievePayment", input)
-
     const id = input.data?.id as string
+
+    if (!id) {
+      throw new MedusaError(
+        MedusaErrorTypes.INVALID_DATA,
+        "Payment id not present"
+      )
+    }
 
     try {
       let data
@@ -565,8 +558,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The updated payment details
    */
   async updatePayment(input: UpdatePaymentInput): Promise<UpdatePaymentOutput> {
-    console.log("updatePayment", input)
-
     // If the Pay data is passed from the order created hook, only then we update
     // the session data.
     const payload = input.data?.payload as Omit<
@@ -692,8 +683,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         amount: payment.amount.value / 100,
       }
 
-      console.log("payment.status.code", payment.status.code)
-      console.log("baseData", baseData)
+      if (this.debug_) {
+        this.logger_.debug(`PayPaymentStatus: ${payment.status.code}`)
+        this.logger_.debug(JSON.stringify(baseData))
+      }
 
       switch (payment.status.code) {
         case PayPaymentStatus.PAID:

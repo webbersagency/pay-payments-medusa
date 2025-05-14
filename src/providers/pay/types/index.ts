@@ -30,12 +30,8 @@ export const PaymentProviderKeys = {
   SOFTPOS: "pay-softpos",
 }
 
-export type PayWebhookParams = {
-  id: string
-  event: string
-  reference: string
-  status_code: (typeof PayPaymentStatus)[keyof typeof PayPaymentStatus]
-}
+export type PaymentProviderValue =
+  (typeof PaymentProviderKeys)[keyof typeof PaymentProviderKeys]
 
 export * from "./common"
 export * from "./order"
