@@ -1,6 +1,7 @@
 import {SubscriberArgs, SubscriberConfig} from "@medusajs/framework"
 
-import {ContainerRegistrationKeys} from "@medusajs/framework/utils"
+import {ContainerRegistrationKeys, MedusaError} from "@medusajs/framework/utils"
+import {cancelOrderWorkflow} from "@medusajs/core-flows"
 
 export default async function paymentCapturedHandler({
   event: {data},
@@ -12,32 +13,28 @@ export default async function paymentCapturedHandler({
   logger.info("Process canceled Pay. payment")
 
   try {
-    const {data: orderData} = await query.graph(
-      {
-        entity: "order",
-        fields: ["id"],
-        filters: {
-          id: data.id,
-        },
+    const {
+      data: [order],
+    } = await query.graph({
+      entity: "order",
+      fields: ["id"],
+      filters: {
+        display_id: data.id,
       },
-      {
-        throwIfKeyNotFound: true,
-      }
-    )
-
-    const order = orderData[0]
+    })
 
     if (!order) {
-      throw new Error(`No associated order found for ID: ${data.id}`)
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `No associated order found for ID: ${data.id}`
+      )
     }
 
-    // TODO cancel order here
-
-    // await sendOrderConfirmationWorkflow(container).run({
-    //   input: {
-    //     id: orderId,
-    //   },
-    // })
+    await cancelOrderWorkflow(container).run({
+      input: {
+        order_id: order.id,
+      },
+    })
   } catch (e) {
     logger.error(e)
     throw e

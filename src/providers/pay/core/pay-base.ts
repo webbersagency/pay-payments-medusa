@@ -41,6 +41,8 @@ import {
   PaymentOptions,
   PayPaymentMethod,
   PayProduct,
+  PayStatusCode,
+  PayTransactionStatus,
   ProviderOptions,
 } from "../types"
 import {PayClient} from "./pay-client"
@@ -418,10 +420,19 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     try {
       const payment = await this.client_.getOrder(id)
 
-      if (payment.status.code === PayPaymentStatus.EXPIRED) {
+      const cancelledStatusses: PayStatusCode[] = [
+        PayPaymentStatus.CANCEL,
+        PayPaymentStatus.EXPIRED,
+        PayPaymentStatus.DENIED_64,
+        PayPaymentStatus.DENIED_63,
+        PayPaymentStatus.CANCEL_61,
+        PayPaymentStatus.CHARGEBACK,
+      ]
+
+      if (cancelledStatusses.includes(payment.status.code)) {
         this.debug_ &&
           this.logger_.info(
-            `Pay. payment ${id} is already expired, no need to cancel`
+            `Pay. payment ${id} is already canceled or expired, no need to cancel`
           )
         return {
           data: {

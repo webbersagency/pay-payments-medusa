@@ -19,8 +19,11 @@ export type PayTransferData = {
   value: string
 }
 
+export type PayStatusCode =
+  (typeof PayPaymentStatus)[keyof typeof PayPaymentStatus]
+
 export type PayTransactionStatus = {
-  code: (typeof PayPaymentStatus)[keyof typeof PayPaymentStatus]
+  code: PayStatusCode
   action: string
   phase: string
 }
