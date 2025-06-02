@@ -22,7 +22,9 @@ export const GET = async (
 
     await cacheModuleService.invalidate(key)
 
-    return res.status(200).send("Successfully cleared cache")
+    return res.status(200).send({
+      message: "Successfully cleared cache",
+    })
   } catch (err) {
     return res.status(500).send(err)
   }

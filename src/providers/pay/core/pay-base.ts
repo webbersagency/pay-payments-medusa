@@ -28,6 +28,7 @@ import {
   UpdatePaymentOutput,
 } from "@medusajs/types"
 import {
+  AbstractEventBusModuleService,
   AbstractPaymentProvider,
   MedusaError,
   MedusaErrorTypes,
@@ -46,7 +47,6 @@ import {PayClient} from "./pay-client"
 import crypto from "crypto"
 import {PayPaymentStatus} from "./constants"
 import getExpirationForPaymentMethod from "../utils/getExpirationForPaymentMethod"
-import Pay from "../index"
 
 /**
  * Dependencies injected into the service
@@ -63,6 +63,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   protected logger_: Logger
   protected client_: PayClient
   protected debug_: boolean
+  protected eventBusService_: AbstractEventBusModuleService
 
   /**
    * Validates that the required options are provided
@@ -102,6 +103,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       false
 
     this.client_ = new PayClient(options, this.logger_)
+    this.eventBusService_ = container.event_bus
   }
 
   abstract get paymentCreateOptions(): PaymentOptions
@@ -710,6 +712,17 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         case PayPaymentStatus.DENIED_63:
         case PayPaymentStatus.CANCEL_61:
         case PayPaymentStatus.CHARGEBACK:
+          await this.eventBusService_.emit(
+            {
+              name: "pay_payment.canceled",
+              data: {
+                // This will be the Order ID that has been set during the creation of the payment
+                id: payment.reference,
+              },
+            },
+            {}
+          )
+
           return {
             action: PaymentActions.CANCELED,
             data: baseData,

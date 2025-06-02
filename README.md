@@ -79,7 +79,7 @@ TBD from here
 ## Installation
 
 ```bash
-yarn add @webbers/pay-payments-medusa
+pnpm add @webbers/pay-payments-medusa
 ```
 
 ## Configuration
@@ -87,37 +87,40 @@ yarn add @webbers/pay-payments-medusa
 Add the provider to the `@medusajs/payment` module in your `medusa-config.ts` file & add it as plugin:
 
 ```typescript
-plugins: [
-  // ... other plugins
-  '@webbers/pay-payments-medusa'
-],
-  modules
-:
-[
-  // ... other modules
-  {
-    resolve: "@medusajs/payment",
-    options: {
-      providers: [
-        {
-          resolve: "@webbers/pay-payments-medusa/providers/pay",
-          id: "pay",
-          options: {
-            paymentDescription: "Your description", // optional
-            atCode: process.env.PAY_AT_CODE,
-            apiToken: process.env.PAY_API_TOKEN,
-            slCode: process.env.PAY_SL_CODE,
-            slSecret: process.env.PAY_SL_SECRET,
-            returnUrl: process.env.PAY_RETURN_URL,
-            testMode: process.env.PAY_TEST_MODE === 'true',
-            tguApiUrl: process.env.PAY_TGU_API_URL, // defaults to https://connect.pay.nl/v1
-            otherSlCodes: process.env.PAY_OTHER_SL_CODE ? JSON.parse(process.env.PAY_OTHER_SL_CODE) : undefined,
+module.exports = defineConfig({
+  projectConfig: {
+    // ...
+  },
+  plugins: [
+    // ... other plugins
+    '@webbers/pay-payments-medusa'
+  ],
+  modules: [
+    // ... other modules
+    {
+      resolve: "@medusajs/medusa/payment",
+      options: {
+        providers: [
+          {
+            resolve: "@webbers/pay-payments-medusa/providers/pay",
+            id: "pay",
+            options: {
+              paymentDescription: "Your description", // optional
+              atCode: process.env.PAY_AT_CODE,
+              apiToken: process.env.PAY_API_TOKEN,
+              slCode: process.env.PAY_SL_CODE,
+              slSecret: process.env.PAY_SL_SECRET,
+              returnUrl: process.env.PAY_RETURN_URL,
+              testMode: process.env.PAY_TEST_MODE === 'true',
+              tguApiUrl: process.env.PAY_TGU_API_URL, // defaults to https://connect.pay.nl/v1
+              otherSlCodes: process.env.PAY_OTHER_SL_CODE ? JSON.parse(process.env.PAY_OTHER_SL_CODE) : undefined,
+            },
           },
-        },
-      ]
+        ]
+      }
     }
-  }
-]
+  ]
+})
 ```
 
 ## Configuration Options

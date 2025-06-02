@@ -12,8 +12,8 @@ import {
   PaymentSessionDTO,
 } from "@medusajs/types"
 import {CustomerDTO, OrderDTO, SalesChannelDTO} from "@medusajs/framework/types"
-import PayProviderService from "../../providers/pay/services/pay-provider"
 import {PayPaymentMethod, ProviderOptions} from "../../providers/pay/types"
+import {getPayServiceByProviderId} from "../../providers/pay/services"
 
 type OrderQueryResult = OrderDTO & {
   customer: CustomerDTO
@@ -32,6 +32,7 @@ type OrderQueryResult = OrderDTO & {
 completeCartWorkflow.hooks.orderCreated(
   async ({order_id, cart_id}, {container}: {container: MedusaContainer}) => {
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
+
     const paymentModuleService = container.resolve<IPaymentModuleService>(
       Modules.PAYMENT
     )
@@ -39,9 +40,10 @@ completeCartWorkflow.hooks.orderCreated(
       ContainerRegistrationKeys.CONFIG_MODULE
     )
 
-    const payProviderOptions = (configModule.modules!
+    const payModuleConfig = (configModule.modules!
       .payment as any)!.options!.providers!.find((p) => p.id === "pay")
-      .options as ProviderOptions
+    const payProviderId = payModuleConfig.id as string
+    const payProviderOptions = payModuleConfig.options as ProviderOptions
 
     const {
       data: [order],
@@ -114,10 +116,13 @@ completeCartWorkflow.hooks.orderCreated(
         }
       )
 
-      const payProviderService = new PayProviderService(
-        container,
-        payProviderOptions
+      const ServiceClass = getPayServiceByProviderId(
+        // Remove the default pp_ prefix & remove the id suffix from config
+        payPaymentSession.provider_id
+          .replace("pp_", "")
+          .replace(`_${payProviderId}`, "")
       )
+      const payProviderService = new ServiceClass(container, payProviderOptions)
 
       const updatedPaymentSession =
         await paymentModuleService.updatePaymentSession({

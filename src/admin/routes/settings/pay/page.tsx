@@ -102,6 +102,8 @@ const PaySettingPage = () => {
         toast.success("Success", {description: "Successfully cleared cache"})
       })
       .catch((error: Error) => {
+        console.log("error", error)
+
         toast.error("Error", {description: getErrorMessage(error)})
       })
   }
