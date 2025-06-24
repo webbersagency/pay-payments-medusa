@@ -214,6 +214,13 @@ Make sure to replace `new method` with the actual Pay payment method ID.
 Export your new service from `src/providers/Pay/services/index.ts`. Then add your new service to the list of services in
 `src/providers/Pay/index.ts`.
 
+## Adding payment method icons
+1. Download the latest payment images from here: https://github.com/paynl/payment-images
+2. Add these to your storefront public assets
+3. In your checkout, create the mapping from the provider id to the icon. 
+   1. You can also utilize the exported `payPaymentMethods` from this plugin to find the corresponding ID. 
+   2. I.e. ```const paymentMethodData = payPaymentMethods.find(method => `pp_${method.value}_pay` === provider_id)```
+
 ## Local development and customization
 
 In case you want to customize and test the plugin locally, refer to

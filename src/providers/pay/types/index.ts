@@ -24,10 +24,28 @@ export type PaymentOptions = {
 
 export const PaymentProviderKeys = {
   PAY_HOSTED_CHECKOUT: "pay-hosted-checkout",
+  SOFTPOS: "pay-softpos",
   BAN_CONTACT: "pay-bancontact",
   CREDITCARD: "pay-creditcard-group",
   IDEAL: "pay-ideal",
-  SOFTPOS: "pay-softpos",
+  APPLE_PAY: "pay-apple-pay",
+  GOOGLE_PAY: "pay-google-pay",
+  PAYPAL: "pay-paypal",
+  IDEAL_IN3: "pay-ideal-in3",
+  BILLINK: "pay-billink",
+  SPRAYPAY: "pay-spraypay",
+  RIVERTY: "pay-riverty",
+  MONDU: "pay-mondu",
+  ALMAPAY: "pay-almapay",
+  KLARNA: "pay-klarna",
+  PAYCONIQ: "pay-payconiq",
+  BLIK: "pay-blik",
+  TWINT: "pay-twint",
+  EPS: "pay-eps",
+  PRZELEWY24: "pay-przelewy24",
+  PAYBYBANK: "pay-paybybank",
+  MOBILEPAY: "pay-mobilepay",
+  WECHATPAY: "pay-wechatpay",
 }
 
 export type PaymentProviderValue =

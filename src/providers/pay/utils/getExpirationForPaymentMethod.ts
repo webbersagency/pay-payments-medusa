@@ -1,15 +1,19 @@
-import {PayPaymentMethod} from "../types"
-import {bnplPaymentMethods, regionalPaymentMethods} from "./paymentMethodMap"
+import {PaymentProviderKeys, PayPaymentMethod} from "../types"
+import {payPaymentMethods} from "../../../constants"
 
 function getExpirationForPaymentMethod(paymentMethod: PayPaymentMethod) {
-  if (regionalPaymentMethods[paymentMethod?.id]) {
+  const payPaymentMethod = payPaymentMethods.find(
+    ({id}) => id === paymentMethod?.id
+  )
+
+  if (payPaymentMethod?.type === "regional") {
     return "+15 minutes"
   }
 
   if (
-    bnplPaymentMethods[paymentMethod?.id] &&
+    payPaymentMethod?.type === "buy_now_pay_later" &&
     // Exclude SprayPay
-    paymentMethod.id !== 1987
+    payPaymentMethod?.value !== PaymentProviderKeys.SPRAYPAY
   ) {
     return "+30 minutes"
   }
