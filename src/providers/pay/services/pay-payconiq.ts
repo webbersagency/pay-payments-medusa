@@ -2,15 +2,15 @@ import PayBase from "../core/pay-base"
 import {PaymentOptions, PaymentProviderKeys} from "../types"
 
 class PayPayconiqService extends PayBase {
-  static identifier = PaymentProviderKeys.IDEAL_IN3
+  static identifier = PaymentProviderKeys.PAYCONIQ
 
   get paymentCreateOptions(): PaymentOptions {
     return {
-      methodId: 1813,
+      methodId: 2379,
       webhookUrl:
         this.options_.medusaUrl +
         "/hooks/payment/" +
-        PaymentProviderKeys.IDEAL_IN3 +
+        PaymentProviderKeys.PAYCONIQ +
         "_pay",
     }
   }
