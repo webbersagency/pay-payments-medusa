@@ -1,7 +1,7 @@
 import PayBase from "../core/pay-base"
 import {PaymentOptions, PaymentProviderKeys} from "../types"
 
-class PaySpraypayService extends PayBase {
+class PayAlmapayService extends PayBase {
   static identifier = PaymentProviderKeys.ALMAPAY
 
   get paymentCreateOptions(): PaymentOptions {
@@ -16,4 +16,4 @@ class PaySpraypayService extends PayBase {
   }
 }
 
-export default PaySpraypayService
+export default PayAlmapayService

@@ -1,7 +1,7 @@
 import PayBase from "../core/pay-base"
 import {PaymentOptions, PaymentProviderKeys} from "../types"
 
-class PayIdealIn3Service extends PayBase {
+class PayPayconiqService extends PayBase {
   static identifier = PaymentProviderKeys.IDEAL_IN3
 
   get paymentCreateOptions(): PaymentOptions {
@@ -16,4 +16,4 @@ class PayIdealIn3Service extends PayBase {
   }
 }
 
-export default PayIdealIn3Service
+export default PayPayconiqService

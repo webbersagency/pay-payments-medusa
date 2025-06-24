@@ -1,7 +1,7 @@
 import PayBase from "../core/pay-base"
 import {PaymentOptions, PaymentProviderKeys} from "../types"
 
-class PayTwintService extends PayBase {
+class PayEpsService extends PayBase {
   static identifier = PaymentProviderKeys.EPS
 
   get paymentCreateOptions(): PaymentOptions {
@@ -16,4 +16,4 @@ class PayTwintService extends PayBase {
   }
 }
 
-export default PayTwintService
+export default PayEpsService

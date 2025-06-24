@@ -1,15 +1,15 @@
 import {
-  Text,
-  Container,
-  Heading,
   Button,
-  DataTable,
-  useDataTable,
+  Container,
   createDataTableColumnHelper,
+  DataTable,
+  Heading,
+  Text,
+  toast,
+  useDataTable,
 } from "@medusajs/ui"
 import {defineRouteConfig} from "@medusajs/admin-sdk"
 import PayLogo from "../../../shared/icons/pay-logo.tsx"
-import {toast} from "@medusajs/ui"
 import {sdk} from "../../../lib/sdk.ts"
 import {useQuery} from "@tanstack/react-query"
 import {displayName, version} from "../../../../../package.json"
@@ -179,7 +179,7 @@ const PaySettingPage = () => {
 }
 
 export const config = defineRouteConfig({
-  label: "Pay.",
+  label: "Pay",
 })
 
 export default PaySettingPage
