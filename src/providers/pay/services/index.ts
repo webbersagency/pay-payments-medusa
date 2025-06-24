@@ -22,7 +22,7 @@ import PaySpraypayService from "./pay-spraypay"
 import PayTwintService from "./pay-twint"
 import PayWechatpayService from "./pay-wechatpay"
 
-const serviceClasses = [
+export const serviceClasses = [
   PayAlmapayService,
   PayApplePayService,
   PayBancontactService,
