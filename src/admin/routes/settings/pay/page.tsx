@@ -180,7 +180,6 @@ const PaySettingPage = () => {
 
 export const config = defineRouteConfig({
   label: "Pay.",
-  icon: PayLogo,
 })
 
 export default PaySettingPage
