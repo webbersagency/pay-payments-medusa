@@ -20,6 +20,7 @@ import {
   GetPaymentStatusOutput,
   InitiatePaymentInput,
   InitiatePaymentOutput,
+  PaymentSessionDTO,
   RefundPaymentInput,
   RefundPaymentOutput,
   RetrievePaymentInput,
@@ -134,9 +135,11 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
   createPayOrderPayload(
     order: OrderDTO & {customer: CustomerDTO; sales_channel: SalesChannelDTO},
-    session_id: string,
-    paymentMethodInput?: PayPaymentMethod["input"]
+    paymentSession: PaymentSessionDTO
   ): Omit<CreateOrder, "serviceId"> {
+    const session_id = paymentSession.data?.session_id as string
+    const paymentMethodInput = paymentSession.data
+      ?.paymentMethodInput as PayPaymentMethod["input"]
     const currency = order.currency_code.toUpperCase()
 
     const products: PayProduct[] = order.items!.map((item) => ({
@@ -205,7 +208,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         session_id,
       },
       amount: {
-        value: Math.round((order.total.valueOf() as number) * 100),
+        value: Math.round((paymentSession.amount.valueOf() as number) * 100),
         currency,
       },
       customer: {
