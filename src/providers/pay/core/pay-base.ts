@@ -195,11 +195,13 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       }
     }
 
+    const baseReturnUrl = ((order?.sales_channel?.metadata?.pay_return_url as string) ?? this.options_.returnUrl)
+
     const payload = {
       reference: order.display_id.toString(),
       description: this.getPaymentDescription(order),
       paymentMethod,
-      returnUrl: `${this.options_.returnUrl}?locale=${order.metadata?.locale?.toString()?.toLowerCase()}&orderId=${order.id}`,
+      returnUrl: `${baseReturnUrl}?locale=${order.metadata?.locale?.toString()?.toLowerCase()}&orderId=${order.id}`,
       expire: paymentMethod
         ? getExpirationForPaymentMethod(paymentMethod)
         : undefined,
