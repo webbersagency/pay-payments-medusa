@@ -195,7 +195,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       }
     }
 
-    const baseReturnUrl = ((order?.sales_channel?.metadata?.pay_return_url as string) ?? this.options_.returnUrl)
+    const baseReturnUrl =
+      (order?.sales_channel?.metadata?.pay_return_url as string) ??
+      this.options_.returnUrl
 
     const payload = {
       reference: order.display_id.toString(),
@@ -222,6 +224,15 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         email: order.email,
         locale: order.metadata?.locale?.toString()?.toUpperCase() ?? "EN",
         reference: order.customer?.id,
+        ...(!!order.billing_address?.company
+          ? {
+              company: {
+                name: order.billing_address.company,
+                vatNumber: order.metadata?.vat_number?.toString(),
+                country: order.billing_address?.country_code?.toUpperCase(),
+              },
+            }
+          : {}),
       },
       order: {
         countryCode: order.billing_address?.country_code?.toUpperCase(),
