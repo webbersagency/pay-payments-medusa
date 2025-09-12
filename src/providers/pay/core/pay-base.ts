@@ -381,15 +381,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     }
 
     try {
-      const payment = await this.retrievePayment({
-        data: {
-          id,
-        },
-      })
+      const payment = await this.client_.getTransaction(id)
 
       const value = (input.data?.amount as BigNumberRawValue).value
-      const currency: string = (payment.data as Record<string, any>)?.amount
-        ?.currency as string
+      const currency = payment.amount.currency
 
       if (!currency) {
         throw new MedusaError(
@@ -544,7 +539,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   }
 
   /**
-   * Retrieves payment details
+   * Retrieves payment details, for payment data within 35 days.
+   * Pay. Orders that are already PAID, will be on the GMS for 13 months.
+   * Otherwise, it is available for 35 days on the TGU.
    * @param input - The payment retrieval input
    * @returns The payment details
    */
@@ -561,14 +558,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     }
 
     try {
-      let data
-
-      // Check if the order ID starts with a 2, in that case we will need to use the legacy Pay API.
-      if (id.startsWith("2")) {
-        data = await this.client_.getTransaction(id)
-      } else {
-        data = await this.client_.getOrder(id)
-      }
+      const data = await this.client_.getOrder(id)
 
       return {
         data: data as Record<string, any>,
