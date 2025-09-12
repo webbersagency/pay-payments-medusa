@@ -34,14 +34,22 @@ export type KlarnaPaymentMethod = {
   countryCode: string
 }
 
-export type PayPaymentMethod = {
-  id: number
-  input?:
-    | GiftCardPaymentMethod
-    | PinPaymentMethod
-    | DirectDebitPaymentMethod
-    | KlarnaPaymentMethod
+// map the ids that *do* require an input to the exact input type
+export type PayIdPaymentMethodMap = {
+  10: IdealPaymentMethod
+  137: DirectDebitPaymentMethod
+  1717: KlarnaPaymentMethod
 }
+
+// union of the mapped cases + a fallback case
+export type PayPaymentMethod =
+  | {
+      [K in keyof PayIdPaymentMethodMap]: {
+        id: K
+        input: PayIdPaymentMethodMap[K]
+      }
+    }[keyof PayIdPaymentMethodMap]
+  | {id: number; input?: never} // for all other ids, input must not be provided
 
 export interface PayOrder {
   countryCode: string

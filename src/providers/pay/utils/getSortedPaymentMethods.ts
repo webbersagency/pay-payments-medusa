@@ -1,4 +1,4 @@
-import {GetConfigResponse, PayCheckoutOption, PayPaymentMethod} from "../types"
+import {GetConfigResponse, PayCheckoutOption} from "../types"
 
 function getSortedPaymentMethods(
   data: Pick<

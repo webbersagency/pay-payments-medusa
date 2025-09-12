@@ -38,12 +38,13 @@ import {
 } from "@medusajs/framework/utils"
 import {
   CreateOrder,
+  IdealPaymentMethod,
   OrderResponse,
+  PayIdPaymentMethodMap,
   PaymentOptions,
   PayPaymentMethod,
   PayProduct,
   PayStatusCode,
-  PayTransactionStatus,
   ProviderOptions,
 } from "../types"
 import {PayClient} from "./pay-client"
@@ -138,8 +139,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     paymentSession: PaymentSessionDTO
   ): Omit<CreateOrder, "serviceId"> {
     const session_id = paymentSession.data?.session_id as string
-    const paymentMethodInput = paymentSession.data
-      ?.paymentMethodInput as PayPaymentMethod["input"]
     const currency = order.currency_code.toUpperCase()
 
     const products: PayProduct[] = order.items!.map((item) => ({
@@ -188,11 +187,14 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
     let paymentMethod: PayPaymentMethod | undefined
 
-    if (typeof this.paymentCreateOptions.methodId !== "undefined") {
+    const methodId = this.paymentCreateOptions.methodId
+    if (typeof methodId !== "undefined") {
+      const paymentMethodInput = paymentSession.data?.paymentMethodInput
+
       paymentMethod = {
-        id: this.paymentCreateOptions.methodId,
+        id: methodId,
         input: paymentMethodInput,
-      }
+      } as PayPaymentMethod
     }
 
     const baseReturnUrl =
