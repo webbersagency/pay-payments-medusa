@@ -283,9 +283,18 @@ _Example integration using the [Medusa Next.js Starter](https://github.com/medus
 
 https://github.com/user-attachments/assets/742ee261-5e41-4e33-9a72-faf1a424fc52
 
+> [!TIP]
+> **Use the Duplicate Cart endpoint in your storefront.**
+>
+> When a customer cancels a payment or returns to the storefront without completing the Pay. checkout, a new duplicate
+> cart should automatically be created. This allows the customer to easily start a new transaction without losing the
+> items they had selected.
+
 ### Duplicate cart endpoint `/store/carts/:id/duplicate`
-To restore completed carts, you can use the duplicate cart endpoint.
-This will create a duplicate cart of the cart id passed in the parameters.
+
+Alter your storefront retrieve cart function(s) and check if the returned cart.completed_at value is set. If so request
+a new cart with the duplicate cart endpoint and update cart id in cookies accordingly.
+
 The duplicate cart endpoint is idempotent, so it can be called multiple times with the same cart id.
 
 ## Adding payment method icons
