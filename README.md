@@ -52,6 +52,7 @@ Don’t have an account with Pay. yet? [Register now!](https://signup.pay.nl/wel
 - [Medusa v1 Support](#medusa-v1-support)
 
 ## Demo store
+
 Visit the demo store here: https://pay-demo.webbers.com
 
 ## Pay. payment methods
@@ -86,7 +87,11 @@ Visit the demo store here: https://pay-demo.webbers.com
 ### Other
 
 - PayPal
-- SEPA Direct Debit (coming soon)
+
+### Recurring payments
+
+- SEPA Direct Debit
+- Card-on-file / recurring card payments (tokenisation) [Coming soon]
 
 ### Region specific payment methods
 
@@ -233,6 +238,7 @@ The plugin currently supports the following Pay payment methods:
 |--------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------|
 | **Pay. hosted checkout**                                                                                                             | `pp_pay-hosted-checkout_pay`          |
 | **Creditcards**<br>Mastercard / VISA / American Express/ Carte Bancaire / <br> Maestro / PostePay / DanKort / Nexi / Visa Mastercard | `pp_pay-creditcard-group_pay`         |
+| **Card-on-file / recurring card payments (tokenisation)**                                                                            | Coming soon                           |
 | **Apple Pay**                                                                                                                        | `pp_pay-apple-pay_pay`                |
 | **Google Pay**                                                                                                                       | `pp_pay-google-pay_pay`               |
 | **iDEAL IN3**                                                                                                                        | `pp_pay-ideal-in3_pay`                |
@@ -243,7 +249,7 @@ The plugin currently supports the following Pay payment methods:
 | **AlmaPAY**                                                                                                                          | `pp_pay-almapay_pay`                  |
 | **Klarna**                                                                                                                           | `pp_pay-klarna_pay`                   |
 | **PayPal**                                                                                                                           | `pp_pay-paypal_pay`                   |
-| **SEPA Direct Debit**                                                                                                                | Coming soon                           |
+| **SEPA Direct Debit**                                                                                                                | `pp_pay-direct-debit_pay`             |
 | **iDEAL**                                                                                                                            | `pp_pay-ideal_pay`                    |
 | **Bancontact**                                                                                                                       | `pp_pay-bancontact_pay`               |
 | **Vipps**                                                                                                                            | [Get in touch](mailto:hi@webbers.com) |
@@ -321,4 +327,5 @@ Export your new service from `src/providers/Pay/services/index.ts`. Then add you
 We will be working on providing all the available Pay. options in the near future.
 
 ## Medusa v1 Support
+
 Searching for support for Medusa v1, we have a legacy plugin available. [Get in touch](mailto:hi@webbers.com)
