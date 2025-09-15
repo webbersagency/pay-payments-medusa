@@ -277,6 +277,11 @@ _Example integration using the [Medusa Next.js Starter](https://github.com/medus
 
 https://github.com/user-attachments/assets/742ee261-5e41-4e33-9a72-faf1a424fc52
 
+### Duplicate cart endpoint `/store/carts/:id/duplicate`
+To restore completed carts, you can use the duplicate cart endpoint.
+This will create a duplicate cart of the cart id passed in the parameters.
+The duplicate cart endpoint is idempotent, so it can be called multiple times with the same cart id.
+
 ## Adding payment method icons
 
 1. Download the latest payment images from here: https://github.com/paynl/payment-images

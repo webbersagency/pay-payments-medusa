@@ -7,15 +7,15 @@ export type ValidateCartCompletedStepInput = {
 }
 
 export const validateCartCompletedStep = createStep(
-  "validate-cart-completed-step",
-  async (input: ValidateCartCompletedStepInput, {container}) => {
-    if (!input.cart.completed_at) {
+  "validate-cart-completed",
+  async (data: ValidateCartCompletedStepInput) => {
+    const {cart} = data
+
+    if (!cart.completed_at) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         "Cannot duplicate uncompleted cart."
       )
     }
-
-    return new StepResponse("", "")
   }
 )

@@ -16,6 +16,7 @@ import {
 } from "@medusajs/medusa/core-flows"
 import {validateCartCompletedStep} from "./steps/validate-cart-completed"
 import {CartDTO} from "@medusajs/types"
+import {defaultStoreCartFields} from "@medusajs/medusa/api/store/carts/query-config"
 
 export const duplicateCartWorkflowId = "duplicate-cart"
 
@@ -166,47 +167,7 @@ export const duplicateCartWorkflow = createWorkflow(
       filters: {
         id: newCart.id,
       },
-      fields: [
-        "id",
-        "email",
-        "customer.id",
-        "type",
-        "metadata",
-        "sales_channel_id",
-        "completed_at",
-        "billing_address.*",
-        "shipping_address.*",
-        "items.*",
-        "items.adjustments.promotion.*",
-        "promotions.*",
-        "region.*",
-        "shipping_methods.*",
-        "payment_collection.*",
-        "currency_code",
-        "total",
-        "subtotal",
-        "tax_total",
-        "discount_total",
-        "discount_subtotal",
-        "discount_tax_total",
-        "original_total",
-        "original_tax_total",
-        "item_total",
-        "item_subtotal",
-        "item_tax_total",
-        "original_item_total",
-        "original_item_subtotal",
-        "original_item_tax_total",
-        "shipping_total",
-        "shipping_subtotal",
-        "shipping_tax_total",
-        "original_shipping_tax_total",
-        "original_shipping_subtotal",
-        "original_shipping_total",
-        "credit_line_subtotal",
-        "credit_line_tax_total",
-        "credit_line_total",
-      ],
+      fields: defaultStoreCartFields,
     }).config({name: "retrieve-duplicated-cart"})
 
     return new WorkflowResponse(duplicatedCart?.[0])
