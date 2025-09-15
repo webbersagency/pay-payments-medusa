@@ -34,6 +34,17 @@
 
 Don’t have an account with Pay. yet? [Register now!](https://signup.pay.nl/welcome?id=M-1030-9252)
 
+> [!CAUTION] If you have subscribers listening to the `order.placed` event, update them to listen to the
+> `payment.captured` event instead. See below.
+
+> [!WARNING]
+> This plugin creates orders in Medusa **immediately**, even if the payment has not yet been captured. If a payment
+> expires,
+> the associated order will be automatically canceled.
+>
+> This change in flow is required to support asynchronous payment methods (e.g., SprayPay), where payment confirmation
+> can take hours depending on customer input.
+
 ## Table of Contents
 
 - [Demo store](#demo-store)
@@ -45,8 +56,9 @@ Don’t have an account with Pay. yet? [Register now!](https://signup.pay.nl/wel
   - [Configuration Options](#configuration-options)
   - [Environment Variables](#environment-variables)
 - [Usage](#usage)
-  - [Supported Payment Methods](#supported-payment-methods)
-  - [Client-Side Integration](#client-side-integration)
+- [Supported Payment Methods](#supported-payment-methods)
+- [Client-Side Integration](#client-side-integration)
+  - [Duplicate cart endpoint](#duplicate-cart-endpoint)
   - [Adding payment method icons](#adding-payment-method-icons)
 - [Extending the Plugin](#extending-the-plugin)
 - [Medusa v1 Support](#medusa-v1-support)
@@ -143,9 +155,6 @@ Would you like to integrate Pay. (Soft)P0S? [Get in touch!](mailto:hi@webbers.co
 - Node.js v20 or later
 - A [Pay](https://signup.pay.nl/welcome?id=M-1030-9252) account and token & secret with payment methods enabled.
 
-> [!NOTE]
-> _You can get the API token & secret from your Pay dashboard: click Settings > Click sales channel > Copy api tokens_
-
 ## Installation
 
 ```bash
@@ -193,7 +202,10 @@ module.exports = defineConfig({
 })
 ```
 
-## Configuration Options
+### Configuration Options
+
+> [!NOTE]
+> _You can get the API token & secret from your Pay dashboard: click Settings > Click sales channel > Copy api tokens_
 
 | Option         | Description                                   | Default                                                                                                                                               |
 |----------------|-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -207,7 +219,7 @@ module.exports = defineConfig({
 | `tguApiUrl`    | Pay TGU API Url                               | Optional, use if you want to use a specific or private TGU, see [here](https://developer.pay.nl/docs/transaction-gateway-unit#multi-cores-more-tgus). |
 | `otherSlCodes` | Your other Pay sales channel code and secrets | Optional, used for webhook signature validation when using multiple Pay. sales channels. Format `'{"SL-CODE-X":"secretX","SL-CODE-Y":"secretY"}'`     |
 
-## Environment Variables
+### Environment Variables
 
 Create or update your `.env` file with the following variables:
 
@@ -282,6 +294,22 @@ documentation. Here's a basic example:
 _Example integration using the [Medusa Next.js Starter](https://github.com/medusajs/nextjs-starter-medusa):_
 
 https://github.com/user-attachments/assets/742ee261-5e41-4e33-9a72-faf1a424fc52
+
+### Duplicate cart endpoint
+
+> [!TIP]
+> Use the duplicate cart endpoint in your storefront
+>
+> When a customer cancels a payment or returns to the storefront without completing the Pay. checkout, a new duplicate
+> cart should automatically be created. This allows the customer to easily start a new transaction without losing the
+> items they had selected.
+
+**API Route**: `GET /store/carts/:id/duplicate`
+
+Alter your storefront retrieve cart function(s) and check if the returned cart.completed_at value is set. If so request
+a new cart with the duplicate cart endpoint and update cart id in cookies accordingly.
+
+The duplicate cart endpoint is idempotent, so it can be called multiple times with the same cart id.
 
 ## Adding payment method icons
 
