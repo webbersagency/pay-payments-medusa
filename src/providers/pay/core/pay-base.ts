@@ -588,10 +588,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
     if (payload) {
       try {
-        const data = await this.client_.createOrder(payload).catch((error) => {
-          this.logger_.error(`Pay. payment creation failed: ${error.message}`)
-          throw new MedusaError(MedusaError.Types.INVALID_DATA, error.message)
-        })
+        const data = await this.client_.createOrder(payload)
 
         this.debug_ &&
           this.logger_.info(
@@ -636,8 +633,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
           data: {
             id: data.order_id,
           },
-        }).catch((e) => {
-          throw new MedusaError(MedusaError.Types.NOT_FOUND, e.message)
         })) as unknown as {data: OrderResponse}
 
         if (!payment) {
