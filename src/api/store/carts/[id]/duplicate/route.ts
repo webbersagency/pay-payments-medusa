@@ -11,7 +11,7 @@ import {defaultStoreCartFields} from "@medusajs/medusa/api/store/carts/query-con
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const we = req.scope.resolve(Modules.WORKFLOW_ENGINE)
 
-  const {result} = await we.run(duplicateCartWorkflowId, {
+  const {result: newCartId} = await we.run(duplicateCartWorkflowId, {
     input: {
       id: req.params.id,
     },
@@ -19,7 +19,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   })
 
   const cart = await refetchCart(
-    result.id,
+    newCartId,
     req.scope,
     prepareRetrieveQuery(
       {},
