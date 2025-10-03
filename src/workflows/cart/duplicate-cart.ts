@@ -1,11 +1,10 @@
 import {
   createWorkflow,
-  WorkflowData,
   transform,
-  when,
+  WorkflowData,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import {MedusaError, Modules, PromotionActions} from "@medusajs/framework/utils"
+import {Modules, PromotionActions} from "@medusajs/framework/utils"
 import {
   addShippingMethodToCartWorkflow,
   addToCartWorkflow,
@@ -162,14 +161,6 @@ export const duplicateCartWorkflow = createWorkflow(
       },
     })
 
-    const {data: duplicatedCart} = useQueryGraphStep({
-      entity: Modules.CART,
-      filters: {
-        id: newCart.id,
-      },
-      fields: defaultStoreCartFields,
-    }).config({name: "retrieve-duplicated-cart"})
-
-    return new WorkflowResponse(duplicatedCart?.[0])
+    return new WorkflowResponse(newCart.id)
   }
 )

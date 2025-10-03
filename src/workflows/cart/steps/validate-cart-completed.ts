@@ -1,4 +1,4 @@
-import {createStep, StepResponse} from "@medusajs/framework/workflows-sdk"
+import {createStep} from "@medusajs/framework/workflows-sdk"
 import {MedusaError} from "@medusajs/framework/utils"
 import {CartDTO} from "@medusajs/framework/types"
 
