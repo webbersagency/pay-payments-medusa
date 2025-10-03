@@ -45,7 +45,7 @@ export const duplicateCartWorkflow = createWorkflow(
       fields: [
         "id",
         "email",
-        "customer.id",
+        "customer_id",
         "type",
         "metadata",
         "sales_channel_id",
@@ -55,7 +55,7 @@ export const duplicateCartWorkflow = createWorkflow(
         "items.*",
         "items.adjustments.promotion.*",
         "promotions.*",
-        "region.id",
+        "region_id",
         "shipping_methods.*",
       ],
     })
