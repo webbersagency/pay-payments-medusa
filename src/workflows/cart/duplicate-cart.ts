@@ -133,8 +133,12 @@ export const duplicateCartWorkflow = createWorkflow(
 
     const items = transform({cart}, (data) => {
       return data.cart?.items?.map((item) => ({
-        variant_id: item?.variant_id ?? undefined,
-        quantity: item?.quantity ?? 0,
+        quantity: item.quantity,
+        variant_id: item.variant_id,
+        is_discountable: item.is_discountable,
+        compare_at_unit_price: item.compare_at_unit_price,
+        unit_price: item.unit_price,
+        metadata: item.metadata,
       }))
     })
 
