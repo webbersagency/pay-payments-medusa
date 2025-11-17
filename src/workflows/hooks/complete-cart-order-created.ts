@@ -1,3 +1,4 @@
+import {completeCartWorkflow} from "@medusajs/medusa/core-flows"
 import {MedusaContainer} from "@medusajs/types"
 import createPayOrder from "../../utils/createPayOrder"
 
@@ -7,11 +8,8 @@ import createPayOrder from "../../utils/createPayOrder"
  * create the Pay. order payment here in the order created flow.
  */
 // @ts-ignore
-createOrdersWorkflow.hooks.orderCreated(
-  async (
-    {order, additional_data},
-    {container}: {container: MedusaContainer}
-  ) => {
-    await createPayOrder({order_id: order.id, container})
+completeCartWorkflow.hooks.orderCreated(
+  async ({order_id, cart_id}, {container}: {container: MedusaContainer}) => {
+    await createPayOrder({order_id, container})
   }
 )
