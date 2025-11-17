@@ -21,6 +21,7 @@ import PaySoftposService from "./pay-softpos"
 import PaySpraypayService from "./pay-spraypay"
 import PayTwintService from "./pay-twint"
 import PayWechatpayService from "./pay-wechatpay"
+import PayDirectDebitService from "./pay-direct-debit"
 
 export const serviceClasses = [
   PayAlmapayService,
@@ -29,6 +30,7 @@ export const serviceClasses = [
   PayBillinkService,
   PayBlikService,
   PayCreditcardService,
+  PayDirectDebitService,
   PayEpsService,
   PayGooglePayService,
   PayIdealService,

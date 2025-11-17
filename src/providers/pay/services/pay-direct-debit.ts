@@ -1,7 +1,7 @@
 import PayBase from "../core/pay-base"
 import {PaymentOptions, PaymentProviderKeys} from "../types"
 
-class PayCreditcardService extends PayBase {
+class PayDirectDebitService extends PayBase {
   static identifier = PaymentProviderKeys.DIRECTDEBIT
 
   get paymentCreateOptions(): PaymentOptions {
@@ -16,4 +16,4 @@ class PayCreditcardService extends PayBase {
   }
 }
 
-export default PayCreditcardService
+export default PayDirectDebitService
