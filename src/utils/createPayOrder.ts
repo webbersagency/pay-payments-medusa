@@ -14,7 +14,42 @@ import {
 import {CustomerDTO, OrderDTO, SalesChannelDTO} from "@medusajs/framework/types"
 import {getPayServiceByProviderId} from "../providers/pay/services"
 
-type OrderQueryResult = OrderDTO & {
+export const defaultCreatePayOrderFields = [
+  "id",
+  "display_id",
+  "metadata",
+  "email",
+  "total",
+  "currency_code",
+  "subtotal",
+  "tax_total",
+  "discount_total",
+  "discount_subtotal",
+  "discount_tax_total",
+  "gift_card_total",
+  "gift_card_tax_total",
+  "shipping_total",
+  "shipping_subtotal",
+  "shipping_tax_total",
+  "original_total",
+  "original_subtotal",
+  "original_tax_total",
+  "item_total",
+  "item_subtotal",
+  "item_tax_total",
+  "original_item_total",
+  "original_item_subtotal",
+  "original_item_tax_total",
+  "items.*",
+  "customer.*",
+  "shipping_address.*",
+  "billing_address.*",
+  "sales_channel.*",
+  "payment_collections.*",
+  "payment_collections.payment_sessions.*",
+]
+
+export type OrderQueryResult = OrderDTO & {
   customer: CustomerDTO
   shipping_address: AddressDTO
   billing_address: AddressDTO
@@ -48,40 +83,7 @@ const createPayOrder = async ({
   }: {data: OrderQueryResult[]} = await query.graph(
     {
       entity: "order",
-      fields: [
-        "id",
-        "display_id",
-        "metadata",
-        "email",
-        "total",
-        "currency_code",
-        "subtotal",
-        "tax_total",
-        "discount_total",
-        "discount_subtotal",
-        "discount_tax_total",
-        "gift_card_total",
-        "gift_card_tax_total",
-        "shipping_total",
-        "shipping_subtotal",
-        "shipping_tax_total",
-        "original_total",
-        "original_subtotal",
-        "original_tax_total",
-        "item_total",
-        "item_subtotal",
-        "item_tax_total",
-        "original_item_total",
-        "original_item_subtotal",
-        "original_item_tax_total",
-        "items.*",
-        "customer.*",
-        "shipping_address.*",
-        "billing_address.*",
-        "sales_channel.*",
-        "payment_collections.*",
-        "payment_collections.payment_sessions.*",
-      ],
+      fields: defaultCreatePayOrderFields,
       filters: {id: order_id},
     },
     {
