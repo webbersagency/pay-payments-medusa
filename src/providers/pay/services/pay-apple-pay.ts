@@ -9,7 +9,7 @@ class PayApplePayService extends PayBase {
       methodId: 2277,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.APPLE_PAY +
         "_pay",
     }

@@ -1,22 +1,11 @@
 import {MedusaRequest, MedusaResponse} from "@medusajs/framework"
 import {PaymentModuleOptions} from "@medusajs/types"
 import {Modules, PaymentWebhookEvents} from "@medusajs/framework/utils"
-import {
-  PaymentProviderKeys,
-  PaymentProviderValue,
-} from "../../../../providers/pay/types"
-
-const isPayProvider = (providerId: string) =>
-  Object.values(PaymentProviderKeys).some((key: PaymentProviderValue) =>
-    providerId.startsWith(key)
-  )
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
-  const {provider} = req.params
-
-  const isPay = isPayProvider(provider)
-
   try {
+    const {provider} = req.params
+
     const options: PaymentModuleOptions =
       // @ts-expect-error "Not sure if .options exists on a module"
       req.scope.resolve(Modules.PAYMENT).options || {}
@@ -40,18 +29,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       }
     )
   } catch (err) {
-    if (isPay) {
-      res.status(400).send("FALSE")
-    } else {
-      res.status(400).send(`Webhook Error: ${err.message}`)
-    }
-
+    res.status(400).send("FALSE")
     return
   }
 
-  if (isPay) {
-    res.status(200).send("TRUE")
-  } else {
-    res.sendStatus(200)
-  }
+  res.status(200).send("TRUE")
 }

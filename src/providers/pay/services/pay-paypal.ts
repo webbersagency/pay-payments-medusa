@@ -9,7 +9,7 @@ class PayPaypalService extends PayBase {
       methodId: 138,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.PAYPAL +
         "_pay",
     }

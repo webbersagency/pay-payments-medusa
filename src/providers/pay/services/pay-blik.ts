@@ -9,7 +9,7 @@ class PayBlikService extends PayBase {
       methodId: 2856,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.BLIK +
         "_pay",
     }

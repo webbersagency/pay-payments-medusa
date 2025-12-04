@@ -9,7 +9,7 @@ class PayMobilepayService extends PayBase {
       methodId: 3558,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.MOBILEPAY +
         "_pay",
     }

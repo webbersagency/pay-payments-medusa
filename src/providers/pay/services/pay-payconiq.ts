@@ -9,7 +9,7 @@ class PayPayconiqService extends PayBase {
       methodId: 2379,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.PAYCONIQ +
         "_pay",
     }

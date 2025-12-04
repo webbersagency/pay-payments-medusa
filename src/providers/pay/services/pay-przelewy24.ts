@@ -9,7 +9,7 @@ class PayPrzelewy24Service extends PayBase {
       methodId: 2151,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.PRZELEWY24 +
         "_pay",
     }

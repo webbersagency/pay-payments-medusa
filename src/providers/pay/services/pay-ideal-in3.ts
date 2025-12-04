@@ -9,7 +9,7 @@ class PayIdealIn3Service extends PayBase {
       methodId: 1813,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.IDEAL_IN3 +
         "_pay",
     }

@@ -9,7 +9,7 @@ class PayGooglePayService extends PayBase {
       methodId: 2558,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.GOOGLE_PAY +
         "_pay",
     }

@@ -9,7 +9,7 @@ class PayAlmapayService extends PayBase {
       methodId: 3552,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.ALMAPAY +
         "_pay",
     }

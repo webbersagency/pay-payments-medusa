@@ -9,7 +9,7 @@ class PayWechatpayService extends PayBase {
       methodId: 1978,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.WECHATPAY +
         "_pay",
     }

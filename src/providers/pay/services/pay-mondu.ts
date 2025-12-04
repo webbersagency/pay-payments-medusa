@@ -9,7 +9,7 @@ class PayMonduService extends PayBase {
       methodId: 3192,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.MONDU +
         "_pay",
     }

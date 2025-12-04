@@ -12,7 +12,7 @@ class PayProviderService extends PayBase {
     return {
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.PAY_HOSTED_CHECKOUT +
         "_pay",
     }

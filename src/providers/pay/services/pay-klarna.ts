@@ -9,7 +9,7 @@ class PayKlarnaService extends PayBase {
       methodId: 1717,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.KLARNA +
         "_pay",
     }

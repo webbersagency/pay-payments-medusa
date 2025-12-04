@@ -9,7 +9,7 @@ class PaySpraypayService extends PayBase {
       methodId: 1987,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.SPRAYPAY +
         "_pay",
     }

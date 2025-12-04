@@ -9,7 +9,7 @@ class PayTwintService extends PayBase {
       methodId: 3840,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.TWINT +
         "_pay",
     }

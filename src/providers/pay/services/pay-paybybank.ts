@@ -9,7 +9,7 @@ class PayPaybybankService extends PayBase {
       methodId: 2970,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.PAYBYBANK +
         "_pay",
     }

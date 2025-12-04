@@ -9,7 +9,7 @@ class PayBillinkService extends PayBase {
       methodId: 1672,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.BILLINK +
         "_pay",
     }

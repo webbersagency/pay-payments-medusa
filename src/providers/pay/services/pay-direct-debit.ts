@@ -9,7 +9,7 @@ class PayDirectDebitService extends PayBase {
       methodId: 137,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.DIRECTDEBIT +
         "_pay",
     }

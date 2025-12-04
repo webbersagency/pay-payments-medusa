@@ -9,7 +9,7 @@ class PayRivertyService extends PayBase {
       methodId: 2561,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.RIVERTY +
         "_pay",
     }

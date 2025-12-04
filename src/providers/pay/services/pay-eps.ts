@@ -9,7 +9,7 @@ class PayEpsService extends PayBase {
       methodId: 2062,
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.EPS +
         "_pay",
     }

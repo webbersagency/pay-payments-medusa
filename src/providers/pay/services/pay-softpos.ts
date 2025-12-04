@@ -8,7 +8,7 @@ class PaySoftposService extends PayBase {
     return {
       webhookUrl:
         this.options_.medusaUrl +
-        "/hooks/payment/" +
+        "/hooks/pay/" +
         PaymentProviderKeys.SOFTPOS +
         "_pay",
     }
