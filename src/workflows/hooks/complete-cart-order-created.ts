@@ -1,6 +1,6 @@
 import {completeCartWorkflow} from "@medusajs/medusa/core-flows"
 import {MedusaContainer} from "@medusajs/types"
-import createPayOrder from "../../utils/createPayOrder"
+import {createPayOrder} from "../../utils"
 
 /**
  * Pay. needs order information to validate and/or verify with after pay payment

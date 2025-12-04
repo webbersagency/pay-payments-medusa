@@ -57,7 +57,7 @@ export type OrderQueryResult = OrderDTO & {
   payment_collections: PaymentCollectionDTO[]
 }
 
-const createPayOrder = async ({
+export const createPayOrder = async ({
   container,
   order_id,
 }: {
@@ -147,5 +147,3 @@ const createPayOrder = async ({
     }
   }
 }
-
-export default createPayOrder
