@@ -55,7 +55,7 @@ export const serviceClasses = [
   PaySpraypayService,
   PayTwintService,
   PayWechatpayService,
-] as const satisfies readonly PayServiceClass[]
+] as PayServiceClass[]
 
 // Build registry once
 const serviceRegistry: Record<string, PayServiceClass> = {}
