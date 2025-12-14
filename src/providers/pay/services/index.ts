@@ -22,6 +22,13 @@ import PaySpraypayService from "./pay-spraypay"
 import PayTwintService from "./pay-twint"
 import PayWechatpayService from "./pay-wechatpay"
 import PayDirectDebitService from "./pay-direct-debit"
+import type {ProviderOptions} from "../types"
+import PayBase from "../core/pay-base"
+
+export type PayServiceClass = {
+  readonly identifier: string
+  new (container: unknown, options: ProviderOptions): PayBase
+}
 
 export const serviceClasses = [
   PayAlmapayService,
@@ -48,16 +55,17 @@ export const serviceClasses = [
   PaySpraypayService,
   PayTwintService,
   PayWechatpayService,
-]
+] as const satisfies readonly PayServiceClass[]
 
 // Build registry once
-const serviceRegistry: Record<string, any> = {}
+const serviceRegistry: Record<string, PayServiceClass> = {}
 
 for (const ServiceClass of serviceClasses) {
   serviceRegistry[ServiceClass.identifier] = ServiceClass
 }
 
-export const getPayServiceByProviderId = (providerId: string) =>
-  serviceRegistry[providerId] || null
+export const getPayServiceByProviderId = (
+  providerId: string
+): PayServiceClass | null => serviceRegistry[providerId] ?? null
 
 export default serviceRegistry

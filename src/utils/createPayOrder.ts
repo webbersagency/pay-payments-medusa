@@ -1,9 +1,10 @@
 import {
   ContainerRegistrationKeys,
+  MedusaError,
   Modules,
   PaymentCollectionStatus,
 } from "@medusajs/framework/utils"
-import {ProviderOptions} from "../providers/pay/types"
+import {PaymentProviderKeys, ProviderOptions} from "../providers/pay/types"
 import {
   AddressDTO,
   IPaymentModuleService,
@@ -91,6 +92,10 @@ export const createPayOrder = async ({
     }
   )
 
+  if (!order) {
+    throw new Error(`Order with id ${order_id} not found`)
+  }
+
   // Check if there is a Pay. payment pending, if so update payment status to
   // pending and update the Pay. order information
   let payPaymentSession: PaymentSessionDTO | undefined
@@ -109,19 +114,29 @@ export const createPayOrder = async ({
   }
 
   if (!!payPaymentSession) {
-    await paymentModuleService.updatePaymentCollections(
-      payPaymentSession.payment_collection_id as string,
-      {
-        status: PaymentCollectionStatus.NOT_PAID,
-      }
-    )
-
     const ServiceClass = getPayServiceByProviderId(
       // Remove the default pp_ prefix & remove the id suffix from config
       payPaymentSession.provider_id
         .replace("pp_", "")
         .replace(`_${payProviderId}`, "")
     )
+
+    if (!ServiceClass) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        `No valid Pay. provider service class found`
+      )
+    }
+
+    if (![PaymentProviderKeys.DIRECTDEBIT].includes(ServiceClass.identifier)) {
+      await paymentModuleService.updatePaymentCollections(
+        payPaymentSession.payment_collection_id as string,
+        {
+          status: PaymentCollectionStatus.NOT_PAID,
+        }
+      )
+    }
+
     const payProviderService = new ServiceClass(container, payProviderOptions)
 
     const updatedPaymentSession =
