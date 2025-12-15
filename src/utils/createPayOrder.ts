@@ -14,6 +14,7 @@ import {
 } from "@medusajs/types"
 import {CustomerDTO, OrderDTO, SalesChannelDTO} from "@medusajs/framework/types"
 import {getPayServiceByProviderId} from "../providers/pay/services"
+import getPayPaymentSession from "./getPayPaymentSession"
 
 export const defaultCreatePayOrderFields = [
   "id",
@@ -98,20 +99,7 @@ export const createPayOrder = async ({
 
   // Check if there is a Pay. payment pending, if so update payment status to
   // pending and update the Pay. order information
-  let payPaymentSession: PaymentSessionDTO | undefined
-
-  for (const pc of order.payment_collections ?? []) {
-    if (!pc?.payment_sessions) continue
-
-    const paymentSession = pc.payment_sessions.find((p) =>
-      p.provider_id.startsWith("pp_pay")
-    )
-
-    if (paymentSession) {
-      payPaymentSession = paymentSession
-      break
-    }
-  }
+  const payPaymentSession = getPayPaymentSession(order)
 
   if (!!payPaymentSession) {
     const ServiceClass = getPayServiceByProviderId(

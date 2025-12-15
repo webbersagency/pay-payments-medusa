@@ -628,7 +628,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
       // For the legacy Pay. webhooks no header signature can be done and only
       // order_id should be used to retrieve the payment.
-      if (data.action === "new_ppt") {
+      if (["incassostorno", "new_ppt"].includes(data.action as string)) {
         const {data: paymentData} = (await this.retrievePayment({
           data: {
             id: data.order_id,
@@ -722,10 +722,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
           }
         case PayPaymentStatus.CANCEL:
         case PayPaymentStatus.EXPIRED:
-        case PayPaymentStatus.DENIED_64:
         case PayPaymentStatus.DENIED_63:
         case PayPaymentStatus.CANCEL_61:
-        case PayPaymentStatus.CHARGEBACK:
           await this.eventBusService_.emit(
             {
               name: "pay_payment.canceled",
@@ -741,12 +739,25 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
             action: PaymentActions.CANCELED,
             data: baseData,
           }
+        case PayPaymentStatus.DENIED_64:
+        case PayPaymentStatus.CHARGEBACK:
         case PayPaymentStatus.FAILURE:
-        case PayPaymentStatus.PAID_CHECKAMOUNT:
+          await this.eventBusService_.emit(
+            {
+              name: "pay_payment.failed",
+              data: {
+                // This will be the Order ID that has been set during the creation of the payment
+                id: payment.reference,
+              },
+            },
+            {}
+          )
+
           return {
             action: PaymentActions.FAILED,
             data: baseData,
           }
+        case PayPaymentStatus.PAID_CHECKAMOUNT:
         case PayPaymentStatus.PARTIAL_PAYMENT:
         case PayPaymentStatus.PARTLY_CAPTURED:
           return {

@@ -1,23 +1,16 @@
 import {SubscriberArgs, SubscriberConfig} from "@medusajs/framework"
 
-import {
-  ContainerRegistrationKeys,
-  MedusaError,
-  Modules,
-  PaymentCollectionStatus,
-} from "@medusajs/framework/utils"
-import {IPaymentModuleService} from "@medusajs/types"
+import {ContainerRegistrationKeys, MedusaError} from "@medusajs/framework/utils"
+import {cancelOrderWorkflow} from "@medusajs/core-flows"
+import {PaymentProviderKeys} from "../providers/pay/types"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
 
-export default async function payPaymentFailedHandler({
+export default async function paymentCapturedHandler({
   event: {data},
   container,
 }: SubscriberArgs<{id: string}>) {
   const logger = container.resolve("logger")
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const paymentModuleService = container.resolve<IPaymentModuleService>(
-    Modules.PAYMENT
-  )
 
   logger.info("Process canceled Pay. payment")
 
@@ -26,11 +19,7 @@ export default async function payPaymentFailedHandler({
       data: [order],
     } = await query.graph({
       entity: "order",
-      fields: [
-        "id",
-        "payment_collections.*",
-        "payment_collections.payment_sessions.*",
-      ],
+      fields: ["id"],
       filters: {
         display_id: data.id,
       },
@@ -44,14 +33,16 @@ export default async function payPaymentFailedHandler({
     }
 
     const payPaymentSession = getPayPaymentSession(order)
+    const isDirectDebit = !!payPaymentSession?.provider_id?.includes(
+      PaymentProviderKeys.DIRECTDEBIT
+    )
 
-    if (!!payPaymentSession) {
-      await paymentModuleService.updatePaymentCollections(
-        payPaymentSession.payment_collection_id as string,
-        {
-          status: PaymentCollectionStatus.NOT_PAID,
-        }
-      )
+    if (!isDirectDebit) {
+      await cancelOrderWorkflow(container).run({
+        input: {
+          order_id: order.id,
+        },
+      })
     }
   } catch (e) {
     logger.error(e)
@@ -60,5 +51,5 @@ export default async function payPaymentFailedHandler({
 }
 
 export const config: SubscriberConfig = {
-  event: ["pay_payment.failed"],
+  event: "pay_payment.canceled",
 }
