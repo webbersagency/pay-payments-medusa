@@ -10,7 +10,6 @@ import {
   IPaymentModuleService,
   MedusaContainer,
   PaymentCollectionDTO,
-  PaymentSessionDTO,
 } from "@medusajs/types"
 import {CustomerDTO, OrderDTO, SalesChannelDTO} from "@medusajs/framework/types"
 import {getPayServiceByProviderId} from "../providers/pay/services"
@@ -116,7 +115,18 @@ export const createPayOrder = async ({
       )
     }
 
-    if (![PaymentProviderKeys.DIRECTDEBIT].includes(ServiceClass.identifier)) {
+    const isDirectDebit = [PaymentProviderKeys.DIRECTDEBIT].includes(
+      ServiceClass.identifier
+    )
+
+    if (isDirectDebit) {
+      await paymentModuleService.updatePaymentCollections(
+        payPaymentSession.payment_collection_id as string,
+        {
+          status: PaymentCollectionStatus.AWAITING,
+        }
+      )
+    } else {
       await paymentModuleService.updatePaymentCollections(
         payPaymentSession.payment_collection_id as string,
         {
@@ -139,6 +149,7 @@ export const createPayOrder = async ({
         },
         currency_code: payPaymentSession.currency_code,
         amount: payPaymentSession.amount,
+        ...(isDirectDebit ? {status: "captured"} : {}),
       })
 
     if (updatedPaymentSession.payment?.id) {
@@ -146,6 +157,7 @@ export const createPayOrder = async ({
         id: updatedPaymentSession.payment.id,
         // @ts-ignore
         data: updatedPaymentSession.data,
+        ...(isDirectDebit ? {captured_at: new Date()} : {}),
       })
     }
   }
