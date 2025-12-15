@@ -48,6 +48,7 @@ export const defaultCreatePayOrderFields = [
   "sales_channel.*",
   "payment_collections.*",
   "payment_collections.payment_sessions.*",
+  "payment_collections.payment_sessions.payment.*",
 ]
 
 export type OrderQueryResult = OrderDTO & {
