@@ -100,6 +100,10 @@ export const createPayOrder = async ({
   // pending and update the Pay. order information
   const payPaymentSession = getPayPaymentSession(order)
 
+  if (payPaymentSession?.status === "captured") {
+    throw new Error("Payment already captured. Cannot create Pay. order.")
+  }
+
   if (!!payPaymentSession) {
     const ServiceClass = getPayServiceByProviderId(
       // Remove the default pp_ prefix & remove the id suffix from config
