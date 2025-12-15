@@ -5,6 +5,7 @@ import {
   MedusaError,
   Modules,
   PaymentCollectionStatus,
+  PaymentSessionStatus,
 } from "@medusajs/framework/utils"
 import {IPaymentModuleService} from "@medusajs/types"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
@@ -49,7 +50,7 @@ export default async function payPaymentFailedHandler({
       await paymentModuleService.updatePaymentCollections(
         payPaymentSession.payment_collection_id as string,
         {
-          status: PaymentCollectionStatus.NOT_PAID,
+          status: PaymentCollectionStatus.FAILED,
         }
       )
     }

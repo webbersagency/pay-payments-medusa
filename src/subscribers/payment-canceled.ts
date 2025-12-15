@@ -1,9 +1,15 @@
 import {SubscriberArgs, SubscriberConfig} from "@medusajs/framework"
 
-import {ContainerRegistrationKeys, MedusaError} from "@medusajs/framework/utils"
+import {
+  ContainerRegistrationKeys,
+  MedusaError,
+  Modules,
+  PaymentCollectionStatus,
+} from "@medusajs/framework/utils"
 import {cancelOrderWorkflow} from "@medusajs/core-flows"
 import {PaymentProviderKeys} from "../providers/pay/types"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
+import {IPaymentModuleService} from "@medusajs/types"
 
 export default async function paymentCapturedHandler({
   event: {data},
@@ -37,7 +43,18 @@ export default async function paymentCapturedHandler({
       PaymentProviderKeys.DIRECTDEBIT
     )
 
-    if (!isDirectDebit) {
+    if (isDirectDebit && !!payPaymentSession) {
+      const paymentModuleService = container.resolve<IPaymentModuleService>(
+        Modules.PAYMENT
+      )
+
+      await paymentModuleService.updatePaymentCollections(
+        payPaymentSession.payment_collection_id as string,
+        {
+          status: PaymentCollectionStatus.FAILED,
+        }
+      )
+    } else {
       await cancelOrderWorkflow(container).run({
         input: {
           order_id: order.id,
