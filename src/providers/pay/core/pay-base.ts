@@ -42,6 +42,7 @@ import {
   OrderResponse,
   PayIdPaymentMethodMap,
   PaymentOptions,
+  PaymentProviderKeys,
   PayPaymentMethod,
   PayProduct,
   PayStatusCode,
@@ -704,6 +705,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         this.logger_.debug(JSON.stringify(baseData))
       }
 
+      const isDirectDebit = payment?.payments?.[0]?.paymentMethod?.id === 137
+
       switch (payment.status.code) {
         case PayPaymentStatus.PAID:
           return {
@@ -724,20 +727,27 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         case PayPaymentStatus.EXPIRED:
         case PayPaymentStatus.DENIED_63:
         case PayPaymentStatus.CANCEL_61:
-          await this.eventBusService_.emit(
-            {
-              name: "pay_payment.canceled",
-              data: {
-                // This will be the Order ID that has been set during the creation of the payment
-                id: payment.reference,
+          if (isDirectDebit) {
+            return {
+              action: PaymentActions.FAILED,
+              data: baseData,
+            }
+          } else {
+            await this.eventBusService_.emit(
+              {
+                name: "pay_payment.canceled",
+                data: {
+                  // This will be the Order ID that has been set during the creation of the payment
+                  id: payment.reference,
+                },
               },
-            },
-            {}
-          )
+              {}
+            )
 
-          return {
-            action: PaymentActions.CANCELED,
-            data: baseData,
+            return {
+              action: PaymentActions.CANCELED,
+              data: baseData,
+            }
           }
         case PayPaymentStatus.DENIED_64:
         case PayPaymentStatus.CHARGEBACK:
