@@ -6,6 +6,10 @@ function getExpirationForPaymentMethod(paymentMethod: PayPaymentMethod) {
     ({id}) => id === paymentMethod?.id
   )
 
+  if (paymentMethod.id === 137) {
+    return
+  }
+
   if (payPaymentMethod?.type === "regional") {
     return "+15 minutes"
   }
