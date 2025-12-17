@@ -6,6 +6,7 @@ import {MedusaError} from "@medusajs/framework/utils"
 export class HttpClient {
   protected readonly options_: ProviderOptions
   protected readonly logger: Logger
+  public readonly debugMode: boolean
   public readonly testMode: boolean
   protected readonly restApiUrl: string
   protected readonly tguApiUrl: string
@@ -15,6 +16,7 @@ export class HttpClient {
     this.options_ = options
     this.logger = logger
     this.testMode = options.testMode ?? true
+    this.debugMode = options.debugMode ?? options.testMode ?? true
     this.restApiUrl = PayEnvironmentPaths.REST_API
     this.tguApiUrl = options.tguApiUrl ?? PayEnvironmentPaths.TGU_API
     this.restApiV3Url = PayEnvironmentPaths.REST_API_v3
@@ -122,7 +124,7 @@ export class HttpClient {
         : await resp.text()
 
       if (!resp.ok) {
-        if (this.testMode) {
+        if (this.debugMode) {
           try {
             this.logger.debug(
               JSON.stringify({

@@ -12,6 +12,7 @@ export type ProviderOptions = {
   slSecret: string
   returnUrl: string
   medusaUrl: string
+  debugMode?: boolean
   testMode?: boolean
   tguApiUrl?: string
   otherSlCodes?: Record<string, string>
