@@ -162,7 +162,6 @@ export const createPayOrder = async ({
         id: updatedPaymentSession.payment.id,
         // @ts-ignore
         data: updatedPaymentSession.data,
-        ...(isDirectDebit ? {captured_at: new Date()} : {}),
       })
     }
   }

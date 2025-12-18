@@ -102,7 +102,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     this.logger_ = container.logger
     this.options_ = options
     this.debug_ =
-      options.testMode ||
+      options.debugMode ||
       process.env.NODE_ENV === "development" ||
       process.env.NODE_ENV === "test" ||
       false
@@ -322,15 +322,22 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     }
 
     try {
-      const {data} = (await this.retrievePayment({
+      let payment = (await this.retrievePayment({
         data: {
           id,
         },
       })) as unknown as {data: OrderResponse}
 
       // If the Pay order is set to authorize we need to capture the order in Pay.
-      if (data?.status?.code === PayPaymentStatus.AUTHORIZE) {
+      if (payment?.data?.status?.code === PayPaymentStatus.AUTHORIZE) {
         await this.client_.captureOrder(id)
+
+        // Refetch payment data
+        payment = (await this.retrievePayment({
+          data: {
+            id,
+          },
+        })) as unknown as {data: OrderResponse}
       }
 
       const status = await this.getPaymentStatus({
@@ -353,14 +360,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
           } ${(input.data?.amount as BigNumberRawValue).value}`
         )
 
-      const payment = await this.retrievePayment({
-        data: {
-          id,
-        },
-      })
-
       return {
-        data: payment.data,
+        data: payment.data as unknown as Record<string, unknown>,
       }
     } catch (error) {
       this.logger_.error(`Error capturing payment ${id}: ${error.message}`)
