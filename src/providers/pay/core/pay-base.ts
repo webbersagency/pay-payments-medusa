@@ -261,9 +261,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       },
     }
 
-    if (this.options_.testMode) {
+    if (this.options_.debugMode) {
       try {
-        this.logger_.debug(JSON.stringify(payload))
+        this.logger_.info(JSON.stringify(payload))
       } catch (e) {}
     }
 
@@ -527,7 +527,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       const mappedStatus = statusMap[status.code] as PaymentSessionStatus
 
       this.debug_ &&
-        this.logger_.debug(
+        this.logger_.info(
           `Pay. payment ${id} status: ${status} (mapped to: ${mappedStatus})`
         )
 
@@ -683,7 +683,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
         if (this.debug_) {
           try {
-            this.logger_.debug(JSON.stringify(data))
+            this.logger_.info(JSON.stringify(data))
           } catch (e) {}
         }
 
@@ -702,8 +702,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       }
 
       if (this.debug_) {
-        this.logger_.debug(`PayPaymentStatus: ${payment.status.code}`)
-        this.logger_.debug(JSON.stringify(baseData))
+        this.logger_.info(`PayPaymentStatus: ${payment.status.code}`)
+        this.logger_.info(JSON.stringify(baseData))
       }
 
       const isDirectDebit = payment?.payments?.[0]?.paymentMethod?.id === 137

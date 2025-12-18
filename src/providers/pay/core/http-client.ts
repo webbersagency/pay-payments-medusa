@@ -126,7 +126,7 @@ export class HttpClient {
       if (!resp.ok) {
         if (this.debugMode) {
           try {
-            this.logger.debug(
+            this.logger.error(
               JSON.stringify({
                 url,
                 method,
@@ -139,7 +139,7 @@ export class HttpClient {
               })
             )
 
-            this.logger.debug(JSON.stringify(result))
+            this.logger.error(JSON.stringify(result))
           } catch (e) {}
         }
 
@@ -153,7 +153,7 @@ export class HttpClient {
   }
 
   protected throwError(error: any) {
-    this.logger.error(error)
+    this.logger.error(JSON.stringify(error))
 
     const message =
       error?.message ??
