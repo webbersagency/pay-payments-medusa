@@ -31,6 +31,8 @@ import {
 import {
   AbstractEventBusModuleService,
   AbstractPaymentProvider,
+  BigNumber,
+  MathBN,
   MedusaError,
   MedusaErrorTypes,
   PaymentActions,
@@ -38,11 +40,8 @@ import {
 } from "@medusajs/framework/utils"
 import {
   CreateOrder,
-  IdealPaymentMethod,
   OrderResponse,
-  PayIdPaymentMethodMap,
   PaymentOptions,
-  PaymentProviderKeys,
   PayPaymentMethod,
   PayProduct,
   PayStatusCode,
@@ -374,8 +373,12 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @param input - The payment refund input
    * @returns The refund result
    */
-  async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentOutput> {
-    const id = input.data?.orderId as string
+  async refundPayment({
+    amount,
+    data,
+    context,
+  }: RefundPaymentInput): Promise<RefundPaymentOutput> {
+    const id = data?.orderId as string
 
     if (!id) {
       throw new MedusaError(
@@ -385,30 +388,31 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     }
 
     try {
-      const payment = await this.client_.getTransaction(id)
+      const currencyCode = data?.currency as string
 
-      const value = (input.data?.amount as BigNumberRawValue).value
-      const currency = payment.amount.currency
-
-      if (!currency) {
+      if (!currencyCode) {
         throw new MedusaError(
           MedusaError.Types.INVALID_DATA,
           "Currency information is missing from payment data"
         )
       }
 
+      const multiplier = 100
+
+      let amount_ =
+        Math.round(new BigNumber(MathBN.mult(amount, multiplier)).numeric) /
+        multiplier
+
       const refund = await this.client_.refundPayment(id, {
         amount: {
-          value: parseInt(value.toString()) * 100,
-          currency: currency.toUpperCase(),
+          value: amount_,
+          currency: currencyCode.toUpperCase(),
         },
       })
 
       this.debug_ &&
         this.logger_.info(
-          `Refund for Pay. payment ${id} created with amount ${currency.toUpperCase()} ${parseFloat(
-            value.toString()
-          ).toFixed(2)}`
+          `Refund for Pay. payment ${id} created with amount ${currencyCode.toUpperCase()} ${amount}`
         )
 
       return {
