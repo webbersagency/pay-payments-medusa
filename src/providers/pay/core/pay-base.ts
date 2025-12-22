@@ -713,6 +713,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       const isDirectDebit = payment?.payments?.[0]?.paymentMethod?.id === 137
 
       switch (payment.status.code) {
+        case PayPaymentStatus.AUTHORIZE:
         case PayPaymentStatus.PAID:
           return {
             action: PaymentActions.SUCCESSFUL,
@@ -779,19 +780,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
             action: PaymentActions.REQUIRES_MORE,
             data: baseData,
           }
-        case PayPaymentStatus.AUTHORIZE:
-          // If the order payment status is not yet captured, we need to capture the payment
-          await this.capturePayment({
-            data: payment as unknown as Record<string, unknown>,
-          })
-
-          return {
-            action: PaymentActions.AUTHORIZED,
-            data: baseData,
-          }
         default:
           return {
-            action: PaymentActions.NOT_SUPPORTED,
+            action: PaymentActions.SUCCESSFUL,
             data: baseData,
           }
       }
