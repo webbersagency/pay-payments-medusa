@@ -780,6 +780,11 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
             data: baseData,
           }
         case PayPaymentStatus.AUTHORIZE:
+          // If the order payment status is not yet captured, we need to capture the payment
+          await this.capturePayment({
+            data: payment as unknown as Record<string, unknown>,
+          })
+
           return {
             action: PaymentActions.AUTHORIZED,
             data: baseData,
