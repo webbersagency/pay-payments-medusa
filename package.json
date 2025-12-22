@@ -1,7 +1,7 @@
 {
   "name": "@webbers/pay-payments-medusa",
   "displayName": "Medusa v2 Pay. Plugin",
-  "version": "2.2.25",
+  "version": "2.2.26",
   "description": "The Pay.nl payment provider plugin for Medusa v2",
   "author": "Webbers B.V. <development@webbers.com>",
   "license": "MIT",

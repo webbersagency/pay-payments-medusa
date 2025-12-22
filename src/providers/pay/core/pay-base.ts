@@ -378,7 +378,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     data,
     context,
   }: RefundPaymentInput): Promise<RefundPaymentOutput> {
-    const id = data?.orderId as string
+    const orderData = data as unknown as OrderResponse
+    const id = orderData?.orderId
 
     if (!id) {
       throw new MedusaError(
@@ -388,7 +389,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     }
 
     try {
-      const currencyCode = data?.currency as string
+      const currencyCode = orderData?.amount?.currency
 
       if (!currencyCode) {
         throw new MedusaError(
