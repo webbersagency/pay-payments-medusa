@@ -398,11 +398,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         )
       }
 
-      const multiplier = 100
-
-      let amount_ =
-        Math.round(new BigNumber(MathBN.mult(amount, multiplier)).numeric) /
-        multiplier
+      const amount_ = Math.round(
+        new BigNumber(MathBN.mult(amount, 100)).numeric
+      )
 
       const refund = await this.client_.refundPayment(id, {
         amount: {
