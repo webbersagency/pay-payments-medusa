@@ -692,6 +692,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
         if (data.type === "order") {
           payment = data.object as OrderResponse
+        } else {
+          return {
+            action: PaymentActions.NOT_SUPPORTED,
+          }
         }
       }
 
