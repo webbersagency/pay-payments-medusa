@@ -48,6 +48,7 @@ export const PaymentProviderKeys = {
   MOBILEPAY: "pay-mobilepay",
   WECHATPAY: "pay-wechatpay",
   DIRECTDEBIT: "pay-direct-debit",
+  SEPA_TRANSFER: "pay-sepa-transfer",
 }
 
 export type PaymentProviderValue =

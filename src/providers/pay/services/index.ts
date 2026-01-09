@@ -24,6 +24,7 @@ import PayWechatpayService from "./pay-wechatpay"
 import PayDirectDebitService from "./pay-direct-debit"
 import type {ProviderOptions} from "../types"
 import PayBase from "../core/pay-base"
+import PaySepaTransferService from "./pay-sepa-transfer"
 
 export type PayServiceClass = {
   readonly identifier: string
@@ -38,6 +39,7 @@ export const serviceClasses = [
   PayBlikService,
   PayCreditcardService,
   PayDirectDebitService,
+  PaySepaTransferService,
   PayEpsService,
   PayGooglePayService,
   PayIdealService,
