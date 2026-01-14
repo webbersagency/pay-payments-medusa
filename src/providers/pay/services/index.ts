@@ -25,6 +25,9 @@ import PayDirectDebitService from "./pay-direct-debit"
 import type {ProviderOptions} from "../types"
 import PayBase from "../core/pay-base"
 import PaySepaTransferService from "./pay-sepa-transfer"
+import PayWeroService from "./pay-wero"
+import PayVippsService from "./pay-vipps"
+import PayBriteService from "./pay-brite"
 
 export type PayServiceClass = {
   readonly identifier: string
@@ -57,6 +60,9 @@ export const serviceClasses = [
   PaySpraypayService,
   PayTwintService,
   PayWechatpayService,
+  PayWeroService,
+  PayVippsService,
+  PayBriteService,
 ] as PayServiceClass[]
 
 // Build registry once
