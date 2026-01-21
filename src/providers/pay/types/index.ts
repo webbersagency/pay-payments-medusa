@@ -39,7 +39,6 @@ export const PaymentProviderKeys = {
   MONDU: "pay-mondu",
   ALMAPAY: "pay-almapay",
   KLARNA: "pay-klarna",
-  PAYCONIQ: "pay-payconiq",
   BLIK: "pay-blik",
   TWINT: "pay-twint",
   EPS: "pay-eps",

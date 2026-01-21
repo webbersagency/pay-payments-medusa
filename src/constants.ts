@@ -63,12 +63,6 @@ export const payPaymentMethods: PaymentMethod[] = [
     type: "regional",
   }, // For PL. Only PLN.
   {id: 2271, name: "Multibanco", type: "regional"}, // For PT. Only EUR.
-  {
-    id: 2379,
-    name: "Payconiq",
-    value: PaymentProviderKeys.PAYCONIQ,
-    type: "regional",
-  }, // For BE and LU. Only EUR.
   {id: 2718, name: "Trustly", type: "regional"}, // For SE, FI, DE, NL, UK, EE, LV, LT, DK, PL, NO, ES, CZ, BE }, AT and SK. Local currencies.
   {id: 2856, name: "Blik", value: PaymentProviderKeys.BLIK, type: "regional"}, // For PL.
   {
@@ -184,7 +178,7 @@ export const payPaymentMethods: PaymentMethod[] = [
   {id: 1903, name: "Amazon Pay", type: "alternative"}, //
   {id: 553, name: "Paysafecard", type: "alternative"}, // For NL, BE, DE, AR, AU, BG, CA, CY, DK, FI, FR, GR, HU, EI, IT, KW, HR, LV, LT, LU, MT, MX, NO, AT, PE, PL, PT, RO, SL, SK, ES, CZ, TR, UR, US, UK, SE }, CH.
   {id: 1600, name: "Telephone payments", type: "alternative"}, // For NL. Only EUR.
-  {id: 3762, name: 'WERO', type: 'regional'},
-  {id: 4287, name: 'Brite Payments', type: 'regional'},
-  {id: 3834, name: 'Vipps', type: 'regional'},
+  {id: 3762, name: "WERO", type: "regional"},
+  {id: 4287, name: "Brite Payments", type: "regional"},
+  {id: 3834, name: "Vipps", type: "regional"},
 ]

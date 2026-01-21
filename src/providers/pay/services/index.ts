@@ -12,7 +12,6 @@ import PayKlarnaService from "./pay-klarna"
 import PayMobilepayService from "./pay-mobilepay"
 import PayMonduService from "./pay-mondu"
 import PayPaybybankService from "./pay-paybybank"
-import PayPayconiqService from "./pay-payconiq"
 import PayPaypalService from "./pay-paypal"
 import PayProviderService from "./pay-provider"
 import PayPrzelewy24Service from "./pay-przelewy24"
@@ -51,7 +50,6 @@ export const serviceClasses = [
   PayMobilepayService,
   PayMonduService,
   PayPaybybankService,
-  PayPayconiqService,
   PayPaypalService,
   PayProviderService,
   PayPrzelewy24Service,
