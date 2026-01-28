@@ -1,8 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework/http';
 import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
 import { IPaymentModuleService, PaymentSessionDTO } from '@medusajs/framework/types';
-import { OrderQueryResult, defaultCreatePayOrderFields } from '@webbers/pay-payments-medusa/utils/createPayOrder';
-import { getPayServiceByProviderId } from '@webbers/pay-payments-medusa/providers/pay/services';
+import { OrderQueryResult, defaultCreatePayOrderFields } from "../../../../../utils"
+import { getPayServiceByProviderId } from "../../../../../providers/pay/services"
 import {ProviderOptions} from "../../../../../providers/pay/types";
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
