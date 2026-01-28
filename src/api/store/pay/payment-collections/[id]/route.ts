@@ -3,7 +3,7 @@ import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
 import { IPaymentModuleService, PaymentSessionDTO } from '@medusajs/framework/types';
 import { OrderQueryResult, defaultCreatePayOrderFields } from '@webbers/pay-payments-medusa/utils/createPayOrder';
 import { getPayServiceByProviderId } from '@webbers/pay-payments-medusa/providers/pay/services';
-import {ProviderOptions} from "../../../../../providers/pay/types"
+import {ProviderOptions} from "../../../../../providers/pay/types";
 
 export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const { id } = req.params;
@@ -18,7 +18,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const payProviderId = payModuleConfig.id as string
   const payProviderOptions = payModuleConfig.options as ProviderOptions
 
-  const hostedCheckout = 'pp_pay-hosted-'+payProviderId;
+  const hostedCheckout = `pp_pay-hosted-${payProviderId}`;
 
   // Check if payment collection already has a payment session with the provider
   const { data: checkPaymentCollections } = await query.graph({
@@ -77,7 +77,13 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(404).json({ message: 'Payment session not found for payment collection' });
   }
 
-  const payServiceProvider = getPayServiceByProviderId(hostedCheckout.replace("pp_", "").replace(`_${payProviderId}`, ""));
+  const getBaseProviderIdFromHostedCheckout = (
+    hostedCheckoutId: string,
+    providerId: string
+  ): string => hostedCheckoutId.replace('pp_', '').replace(`_${providerId}`, '');
+
+  const baseProviderId = getBaseProviderIdFromHostedCheckout(hostedCheckout, payProviderId);
+  const payServiceProvider = getPayServiceByProviderId(baseProviderId);
   if (!payServiceProvider) {
     return res.status(404).json({ message: 'Payment provider not found' });
   }
