@@ -18,7 +18,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const payProviderId = payModuleConfig.id as string
   const payProviderOptions = payModuleConfig.options as ProviderOptions
 
-  const hostedCheckout = `pp_pay-hosted-${payProviderId}`;
+  const hostedCheckout = `pp_pay-hosted-checkout_${payProviderId}`;
 
   // Check if payment collection already has a payment session with the provider
   const { data: checkPaymentCollections } = await query.graph({
