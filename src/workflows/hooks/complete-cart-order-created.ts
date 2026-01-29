@@ -10,6 +10,16 @@ import {createPayOrder} from "../../utils"
 // @ts-ignore
 completeCartWorkflow.hooks.orderCreated(
   async ({order_id, cart_id}, {container}: {container: MedusaContainer}) => {
-    await createPayOrder({order_id, container})
+    const logger = container.resolve("logger")
+
+    try {
+      await createPayOrder({order_id, container})
+    } catch (error) {
+      logger.error(
+        `Failed to create pay order for order_id=${order_id}, cart_id=${cart_id}: ${
+          (error as Error)?.message
+        }`
+      )
+    }
   }
 )
