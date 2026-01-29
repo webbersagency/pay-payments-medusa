@@ -71,8 +71,8 @@ const PaySettingPage = () => {
     return result.map((pm) => ({
       id: pm.id.toString(),
       name: pm.name,
-      minAmount: pm.minAmount ? formatter.format(pm.minAmount) : "-",
-      maxAmount: pm.maxAmount ? formatter.format(pm.maxAmount) : "-",
+      minAmount: pm.minAmount ? formatter.format(pm.minAmount / 100) : "-",
+      maxAmount: pm.maxAmount ? formatter.format(pm.maxAmount / 100) : "-",
     }))
   }, [config])
 
