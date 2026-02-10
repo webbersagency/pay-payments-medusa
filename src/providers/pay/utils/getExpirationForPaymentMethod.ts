@@ -6,7 +6,13 @@ function getExpirationForPaymentMethod(paymentMethod: PayPaymentMethod) {
     ({id}) => id === paymentMethod?.id
   )
 
-  if (paymentMethod.id === 137) {
+  // Return undefined for payment methods that don't require an expiration
+  if (
+    [
+      136, // Bank Transfer (SCT)
+      137, // SEPA Direct Debit
+    ].includes(paymentMethod.id)
+  ) {
     return
   }
 
