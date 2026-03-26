@@ -1,5 +1,5 @@
 import {MedusaRequest, MedusaResponse} from "@medusajs/framework/http"
-import {Modules} from "@medusajs/framework/utils"
+import {MedusaError, Modules} from "@medusajs/framework/utils"
 import {duplicateCartWorkflowId} from "../../../../../workflows/cart/duplicate-cart"
 import {refetchCart} from "@medusajs/medusa/api/store/carts/helpers"
 
@@ -12,6 +12,13 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     },
     transactionId: "cart-duplicate-" + req.params.id,
   })
+
+  if (!newCartId) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `Duplicate cart workflow for cart "${req.params.id}" did not return a cart ID`
+    )
+  }
 
   const cart = await refetchCart(newCartId, req.scope, req.queryConfig.fields)
 
