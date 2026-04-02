@@ -76,7 +76,7 @@ export const payPaymentMethods: PaymentMethod[] = [
   /**
    * Card Not Present payments
    */
-  {id: 706, name: "Visa / Mastercard", type: "card_not_present"},
+  {id: 706, value: PaymentProviderKeys.CREDITCARD, name: "Visa / Mastercard", type: "card_not_present"},
   {id: 709, name: "Visa / Mastercard", type: "card_not_present"}, // High risk
   {id: 3141, name: "Visa", type: "card_not_present"},
   {id: 3138, name: "Mastercard", type: "card_not_present"},
@@ -167,8 +167,8 @@ export const payPaymentMethods: PaymentMethod[] = [
   /**
    * Alternative payment methods
    */
-  {id: 136, name: "Bank Transfer (SCT)", type: "alternative"}, // Only SEPA countries.
-  {id: 137, name: "SEPA Direct Debit", type: "alternative"}, // Only SEPA countries.
+  {id: 136, value: PaymentProviderKeys.SEPA_TRANSFER, name: "Bank Transfer (SCT)", type: "alternative"}, // Only SEPA countries.
+  {id: 137, value: PaymentProviderKeys.DIRECTDEBIT, name: "SEPA Direct Debit", type: "alternative"}, // Only SEPA countries.
   {
     id: 138,
     name: "PayPal",
@@ -178,7 +178,12 @@ export const payPaymentMethods: PaymentMethod[] = [
   {id: 1903, name: "Amazon Pay", type: "alternative"}, //
   {id: 553, name: "Paysafecard", type: "alternative"}, // For NL, BE, DE, AR, AU, BG, CA, CY, DK, FI, FR, GR, HU, EI, IT, KW, HR, LV, LT, LU, MT, MX, NO, AT, PE, PL, PT, RO, SL, SK, ES, CZ, TR, UR, US, UK, SE }, CH.
   {id: 1600, name: "Telephone payments", type: "alternative"}, // For NL. Only EUR.
-  {id: 3762, name: "WERO", type: "regional"},
-  {id: 4287, name: "Brite Payments", type: "regional"},
-  {id: 3834, name: "Vipps", type: "regional"},
+  {id: 3762, value: PaymentProviderKeys.WERO, name: "WERO", type: "regional"},
+  {id: 4287, value: PaymentProviderKeys.BRITE, name: "Brite Payments", type: "regional"},
+  {id: 3834, value: PaymentProviderKeys.VIPPS, name: "Vipps", type: "regional"}, // For NO. Only NOK
+  {id: 4146, name: "Satispay", value: PaymentProviderKeys.SATISPAY, type: "regional"}, // For IT, FR, LU and DE. Only EUR
+  {id: 3837, name: "Swish", value: PaymentProviderKeys.SWISH, type: "regional"},
+  {id: 4809, name: "Bancomat", value: PaymentProviderKeys.BANCOMAT, type: "regional"}, // For Italy
+  {id: 4815, name: "FLOA", value: PaymentProviderKeys.FLOA, type: "regional"}, // For France
+  {id: 4803, name: "PIX", value: PaymentProviderKeys.PIX, type: "regional"}, // For Brazil
 ]

@@ -1,6 +1,3 @@
-import {PayPaymentStatus} from "../core/constants"
-import {PayPaymentMethod} from "./order"
-
 /**
  * Configuration options for the Pay. payment provider
  */
@@ -51,6 +48,11 @@ export const PaymentProviderKeys = {
   WERO: "pay-wero",
   VIPPS: "pay-vipps",
   BRITE: "pay-brite",
+  SWISH: "pay-swish",
+  SATISPAY: "pay-satispay",
+  BANCOMAT: "pay-bancomat",
+  FLOA: "pay-floa",
+  PIX: "pay-pix",
 }
 
 export type PaymentProviderValue =
