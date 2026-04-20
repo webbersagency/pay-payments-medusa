@@ -40,6 +40,7 @@ import {
 } from "@medusajs/framework/utils"
 import {
   CreateOrder,
+  GetTransactionFullResponse,
   OrderResponse,
   PaymentOptions,
   PayPaymentMethod,
@@ -565,7 +566,12 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     }
 
     try {
-      const data = await this.client_.getOrder(id)
+      const data = await this.client_.getOrder(id).catch((error) => {
+        this.logger_.warn(
+          `getOrder failed for ${id}, falling back to getTransaction: ${error.message}`
+        )
+        return this.client_.getTransaction(id)
+      })
 
       return {
         data: data as Record<string, any>,
