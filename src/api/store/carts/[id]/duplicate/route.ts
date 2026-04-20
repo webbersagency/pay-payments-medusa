@@ -12,15 +12,15 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const we = req.scope.resolve(Modules.WORKFLOW_ENGINE)
   const transactionId = "cart-duplicate-" + req.params.id
 
-  const runDuplicate = async (): Promise<string | undefined> => {
-    const {result} = await we.run(duplicateCartWorkflowId, {
+  const runDuplicate = async () => {
+    const {result, transaction} = await we.run(duplicateCartWorkflowId, {
       input: {id: req.params.id},
       transactionId,
     })
-    return result
+    return {result, transaction}
   }
 
-  let newCartId = await runDuplicate()
+  let {result: newCartId, transaction} = await runDuplicate()
 
   // Two concurrent callers (e.g. Pay.nl exchange + return URL) hit this
   // endpoint with the same source cart id. The workflow engine de-duplicates
@@ -32,9 +32,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   // A linear 2s poll choosen based on real world examples of this workflow.
   // Timeout of retry is 20 seconds.
   const deadline = Date.now() + MAX_WAIT_MS
-  while (!newCartId && Date.now() < deadline) {
+  while (!newCartId && !transaction.hasFinished() && Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS)
-    newCartId = await runDuplicate()
+    ;({result: newCartId, transaction} = await runDuplicate())
   }
 
   if (!newCartId) {
