@@ -5,22 +5,22 @@ import {
   MedusaError,
   Modules,
   PaymentCollectionStatus,
-  PaymentSessionStatus,
 } from "@medusajs/framework/utils"
 import {IPaymentModuleService} from "@medusajs/types"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
+import {PayPaymentStatus} from "../providers/pay/core/constants"
 
 export default async function payPaymentFailedHandler({
   event: {data},
   container,
-}: SubscriberArgs<{id: string}>) {
+}: SubscriberArgs<{id: string; statusCode?: number}>) {
   const logger = container.resolve("logger")
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const paymentModuleService = container.resolve<IPaymentModuleService>(
     Modules.PAYMENT
   )
 
-  logger.info("Process canceled Pay. payment")
+  logger.info("Process failed Pay. payment")
 
   try {
     const {
@@ -30,6 +30,7 @@ export default async function payPaymentFailedHandler({
       fields: [
         "id",
         "payment_collections.*",
+        "payment_collections.payments.captured_at",
         "payment_collections.payment_sessions.*",
       ],
       filters: {
@@ -44,9 +45,24 @@ export default async function payPaymentFailedHandler({
       )
     }
 
+    // A failure exchange for a stale attempt must not flip a paid collection.
+    // A chargeback is the exception, it legitimately reverses a captured payment.
+    const hasCapturedPayment = (order.payment_collections ?? []).some(
+      (pc) =>
+        pc.status === PaymentCollectionStatus.COMPLETED ||
+        (pc.payments ?? []).some((payment) => !!payment.captured_at)
+    )
+
+    if (hasCapturedPayment && data.statusCode !== PayPaymentStatus.CHARGEBACK) {
+      logger.info(
+        `Skipping failed status for order ${order.id}, a captured payment exists`
+      )
+      return
+    }
+
     const payPaymentSession = getPayPaymentSession(order)
 
-    if (!!payPaymentSession) {
+    if (payPaymentSession) {
       await paymentModuleService.updatePaymentCollections(
         payPaymentSession.payment_collection_id as string,
         {

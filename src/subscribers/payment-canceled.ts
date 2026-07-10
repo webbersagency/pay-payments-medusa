@@ -25,7 +25,13 @@ export default async function paymentCapturedHandler({
       data: [order],
     } = await query.graph({
       entity: "order",
-      fields: ["id"],
+      fields: [
+        "id",
+        "payment_collections.status",
+        "payment_collections.payments.captured_at",
+        "payment_collections.payment_sessions.provider_id",
+        "payment_collections.payment_sessions.payment_collection_id",
+      ],
       filters: {
         display_id: data.id,
       },
@@ -39,11 +45,10 @@ export default async function paymentCapturedHandler({
     }
 
     const payPaymentSession = getPayPaymentSession(order)
-    const isDirectDebit = !!payPaymentSession?.provider_id?.includes(
-      PaymentProviderKeys.DIRECTDEBIT
-    )
 
-    if (isDirectDebit && !!payPaymentSession) {
+    if (
+      payPaymentSession?.provider_id.includes(PaymentProviderKeys.DIRECTDEBIT)
+    ) {
       const paymentModuleService = container.resolve<IPaymentModuleService>(
         Modules.PAYMENT
       )
@@ -55,6 +60,21 @@ export default async function paymentCapturedHandler({
         }
       )
     } else {
+      // A cancel exchange can arrive after the order was paid through another
+      // attempt, never cancel an order that has a captured payment.
+      const hasCapturedPayment = (order.payment_collections ?? []).some(
+        (pc) =>
+          pc.status === PaymentCollectionStatus.COMPLETED ||
+          (pc.payments ?? []).some((payment) => !!payment.captured_at)
+      )
+
+      if (hasCapturedPayment) {
+        logger.info(
+          `Skipping cancel for order ${order.id}, a captured payment exists`
+        )
+        return
+      }
+
       await cancelOrderWorkflow(container).run({
         input: {
           order_id: order.id,

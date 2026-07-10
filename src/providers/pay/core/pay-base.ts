@@ -329,10 +329,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       })) as unknown as {data: OrderResponse}
 
       // If the Pay order is set to authorize we need to capture the order in Pay.
-      if (payment?.data?.status?.code === PayPaymentStatus.AUTHORIZE) {
+      if (payment.data.status.code === PayPaymentStatus.AUTHORIZE) {
         await this.client_.captureOrder(id)
 
-        // Refetch payment data
         payment = (await this.retrievePayment({
           data: {
             id,
@@ -532,7 +531,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
       this.debug_ &&
         this.logger_.info(
-          `Pay. payment ${id} status: ${status} (mapped to: ${mappedStatus})`
+          `Pay. payment ${id} status: ${status.code} (mapped to: ${mappedStatus})`
         )
 
       return {
@@ -625,6 +624,30 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   }
 
   /**
+   * A failure exchange can refer to one payment attempt while the Pay. order was
+   * paid through a later attempt, so the live status is checked before acting on
+   * it. Returns false when the status cannot be verified, keeping the regular
+   * failure handling in place.
+   */
+  protected async isPaymentLivePaid(payment: OrderResponse): Promise<boolean> {
+    try {
+      const live = await this.client_
+        .getOrder(payment.id)
+        .catch(() => this.client_.getTransaction(payment.orderId))
+
+      return (
+        live.status.code === PayPaymentStatus.PAID ||
+        live.status.code === PayPaymentStatus.AUTHORIZE
+      )
+    } catch (error) {
+      this.logger_.warn(
+        `Could not verify live Pay. status for ${payment.id}: ${error.message}`
+      )
+      return false
+    }
+  }
+
+  /**
    * Processes webhook data from Pay.
    * @param payload - The webhook payload
    * @returns The action and data to be processed
@@ -645,13 +668,6 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
             id: data.order_id,
           },
         })) as unknown as {data: OrderResponse}
-
-        if (!payment) {
-          throw new MedusaError(
-            MedusaError.Types.NOT_FOUND,
-            "Payment not found"
-          )
-        }
 
         payment = paymentData
       } else {
@@ -676,14 +692,20 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         if (!secret) {
           throw new MedusaError(
             MedusaErrorTypes.INVALID_DATA,
-            `No secret key not found for ${signatureKeyId}`
+            `No secret key found for ${signatureKeyId}`
           )
         }
 
         const hmac = crypto.createHmac(signatureAlgorithm, secret)
-        const calculatedSignature = hmac.update(rawData).digest("hex")
+        const expectedSignature = hmac.update(rawData).digest()
+        const providedSignature = Buffer.from(signature ?? "", "hex")
 
-        if (calculatedSignature !== signature) {
+        // timingSafeEqual throws on buffers of unequal length, so compare
+        // the lengths first
+        if (
+          expectedSignature.length !== providedSignature.length ||
+          !crypto.timingSafeEqual(expectedSignature, providedSignature)
+        ) {
           throw new MedusaError(
             MedusaErrorTypes.INVALID_DATA,
             "Invalid signature"
@@ -719,7 +741,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         this.logger_.info(JSON.stringify(baseData))
       }
 
-      const isDirectDebit = payment?.payments?.[0]?.paymentMethod?.id === 137
+      const isDirectDebit = payment.payments?.[0]?.paymentMethod?.id === 137
 
       switch (payment.status.code) {
         case PayPaymentStatus.AUTHORIZE:
@@ -748,6 +770,17 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
               data: baseData,
             }
           } else {
+            if (await this.isPaymentLivePaid(payment)) {
+              this.logger_.info(
+                `Pay. order ${payment.id} is paid, ignoring ${payment.status.code} exchange for #${payment.reference}`
+              )
+
+              return {
+                action: PaymentActions.SUCCESSFUL,
+                data: baseData,
+              }
+            }
+
             await this.eventBusService_.emit(
               {
                 name: "pay_payment.canceled",
@@ -767,12 +800,29 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         case PayPaymentStatus.DENIED_64:
         case PayPaymentStatus.CHARGEBACK:
         case PayPaymentStatus.FAILURE:
+          // A chargeback on a paid order is a legitimate failure, the other codes
+          // can belong to an attempt that was superseded by a paid one.
+          if (
+            payment.status.code !== PayPaymentStatus.CHARGEBACK &&
+            (await this.isPaymentLivePaid(payment))
+          ) {
+            this.logger_.info(
+              `Pay. order ${payment.id} is paid, ignoring ${payment.status.code} exchange for #${payment.reference}`
+            )
+
+            return {
+              action: PaymentActions.SUCCESSFUL,
+              data: baseData,
+            }
+          }
+
           await this.eventBusService_.emit(
             {
               name: "pay_payment.failed",
               data: {
                 // This will be the Order ID that has been set during the creation of the payment
                 id: payment.reference,
+                statusCode: payment.status.code,
               },
             },
             {}
