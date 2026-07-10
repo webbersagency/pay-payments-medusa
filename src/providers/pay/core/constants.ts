@@ -9,7 +9,6 @@ export const PAY_CACHE_KEY = {
 export const PayEnvironmentPaths = {
   REST_API: "https://rest.pay.nl/v2",
   TGU_API: "https://connect.pay.nl/v1",
-  REST_API_v3: "https://rest-api.pay.nl/v3",
 }
 
 export const PayApiPath = {
@@ -21,8 +20,9 @@ export const PayApiPath = {
   ORDER_ABORT: "/orders/{id}/abort",
   GET_TRANSACTION: "/transactions/{id}",
   TRANSACTION_REFUND: "/transactions/{id}/refund",
-  DIRECT_DEBIT: "/DirectDebit/debitAdd/json",
-  DIRECT_DEBIT_INFO: "/DirectDebit/info/json",
+  DIRECT_DEBIT: "/directdebits/mandates",
+  DIRECT_DEBIT_INFO: "/directdebits/{id}",
+  DIRECT_DEBIT_INFO_BY_MANDATE: "/directdebits?mandate[eq]={id}",
 }
 
 // Transaction Statuses: https://developer.pay.nl/docs/transaction-statuses#after-processing-statuses
@@ -51,4 +51,15 @@ export const PayPaymentStatus = {
   REFUNDING: -72,
   REFUND: -81,
   PARTIAL_REFUND: -82,
+} as const
+
+// Statuses for direct debits created via the mandate API, these differ from
+// the transaction statuses above
+export const PayDirectDebitStatusCode = {
+  COLLECTED: 100,
+  FAILED: 106,
+  STORNO: 127,
+  PENDING: 91,
+  SENT: 94,
+  PROCESSING: 526,
 } as const

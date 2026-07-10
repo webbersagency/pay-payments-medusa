@@ -29,7 +29,7 @@ This plugin **bypasses Medusa's normal "create payment session → authorize →
 1. `initiatePayment` is a no-op that just returns a session_id.
 2. The real Pay. order is created in `src/workflows/hooks/complete-cart-order-created.ts`, which hooks `completeCartWorkflow.hooks.orderCreated` and calls `createPayOrder` (`src/utils/createPayOrder.ts`). This is because Pay.'s BNPL / after-pay methods need real order data (line items, addresses) before they can be initiated.
 3. `createPayOrder` looks up the order's payment session (via `getPayPaymentSession`), instantiates the matching service class, builds the Pay. payload, and stores it via `updatePaymentSession` — which triggers `PayBase.updatePayment`, which calls `PayClient.createOrder` against Pay.'s TGU.
-4. Direct Debit (`PaymentProviderKeys.DIRECTDEBIT`) is special: payment collection is set to `AWAITING` (other methods go to `NOT_PAID`) and the session is marked `captured` synchronously.
+4. Direct Debit (`PaymentProviderKeys.DIRECTDEBIT`) is special: payment collection is set to `AWAITING` (other methods go to `NOT_PAID`) and the session is marked `captured` synchronously. It is not created through the order API but through the mandate API (`POST /directdebits/mandates`, `PayDirectDebitService.updatePayment`); the mandate response (its `code` is the mandate id) becomes the session data. Collection status changes arrive later via incasso exchanges (see Webhooks).
 
 Consequence: **orders are created in Medusa before payment is captured**. If the Pay. payment expires/cancels, the order is cancelled via the `pay_payment.canceled` subscriber. Storefront subscribers should listen to `payment.captured`, not `order.placed`.
 
@@ -39,13 +39,14 @@ Consequence: **orders are created in Medusa before payment is captured**. If the
 - Maps Pay. status codes (`PayPaymentStatus` in `src/providers/pay/core/constants.ts`) to Medusa `PaymentActions`.
 - Emits internal events `pay_payment.canceled` / `pay_payment.failed` consumed by `src/subscribers/`. These events carry `payment.reference`, which is the order's `display_id`.
 
+Direct debit (Incasso) exchanges — the legacy `incasso*` actions carrying a `referenceId`/`mandateId`, and the flat unsigned payload with `paymentMethod.id === 137` and no `type: "order"` — are detected in the route (`src/utils/directDebitExchange.ts`) and diverted to the internal event `pay_payment.direct_debit_exchange`, handled by `src/subscribers/direct-debit-exchange.ts`. That subscriber never trusts the exchange body: it re-fetches the direct debit from Pay. (by reference id or mandate code) and maps `PayDirectDebitStatusCode` — COLLECTED runs `capturePaymentWorkflow` (the provider's `capturePayment` re-verifies collection with Pay.), FAILED/STORNO/declined set the payment collection to FAILED (also after capture), PENDING/SENT/PROCESSING keep it AWAITING. An `incassostorno` with only an `order_id` (payments created through the order API before the mandate switch) still falls through to the regular webhook flow.
+
 The hooks route must preserve the raw body for HMAC verification — see `src/api/hooks/middlewares.ts` (`bodyParser: { preserveRawBody: true }`).
 
 ### Pay. HTTP clients
-`PayClient` (`src/providers/pay/core/pay-client.ts`) wraps three Pay. API surfaces handled by `HttpClient`:
+`PayClient` (`src/providers/pay/core/pay-client.ts`) wraps two Pay. API surfaces handled by `HttpClient`:
 - `tguRequest` — order lifecycle (`/orders`, `/orders/{id}/capture|abort|status`) at the TGU host (configurable via `options.tguApiUrl`).
-- `apiRequest` — config + transaction status + refunds at REST API v2.
-- `restApiV3Request` — legacy REST v3 for Direct Debit (form-encoded).
+- `apiRequest` — config + transaction status + refunds + direct debit mandates (`/directdebits/*`) at REST API v2. `createDirectDebit` is a no-op (log only) in test mode.
 
 All requests use HTTP Basic auth with `atCode:apiToken`. In test mode, `integration.test = true` is merged into JSON bodies.
 

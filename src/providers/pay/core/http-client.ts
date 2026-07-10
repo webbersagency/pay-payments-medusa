@@ -10,7 +10,6 @@ export class HttpClient {
   public readonly testMode: boolean
   protected readonly restApiUrl: string
   protected readonly tguApiUrl: string
-  protected readonly restApiV3Url: string
 
   constructor({options, logger}: {options: ProviderOptions; logger: Logger}) {
     this.options_ = options
@@ -19,35 +18,6 @@ export class HttpClient {
     this.debugMode = options.debugMode ?? options.testMode ?? true
     this.restApiUrl = PayEnvironmentPaths.REST_API
     this.tguApiUrl = options.tguApiUrl ?? PayEnvironmentPaths.TGU_API
-    this.restApiV3Url = PayEnvironmentPaths.REST_API_v3
-  }
-
-  async restApiV3Request<T, TResponse>({
-    endpoint,
-    data,
-    method,
-  }: {
-    endpoint: string
-    data?: T
-    method?: RequestInit["method"]
-  }): Promise<TResponse> {
-    const body = new URLSearchParams()
-
-    if (data) {
-      const keys = Object.keys(data)
-      for (const key of keys) {
-        body.append(key, `${data[key]}`)
-      }
-    }
-
-    return this.request_({
-      url: `${this.restApiV3Url}${endpoint}`,
-      data: body.toString(),
-      method,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    })
   }
 
   async apiRequest<T, TResponse>({

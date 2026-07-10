@@ -4,7 +4,7 @@ import {
   CreateDirectDebitRequest,
   CreateDirectDebitResponse,
   CreateOrder,
-  DirectDebitInfoRequest,
+  DirectDebit,
   DirectDebitInfoResponse,
   GetConfigResponse,
   GetTransactionFullResponse,
@@ -20,10 +20,12 @@ import {Logger} from "@medusajs/medusa"
 export class PayClient {
   protected readonly httpClient_: HttpClient
   protected readonly serviceId_: string
+  protected readonly logger_: Logger
 
   constructor(options: ProviderOptions, logger: Logger) {
     this.httpClient_ = new HttpClient({options, logger})
     this.serviceId_ = options.slCode
+    this.logger_ = logger
   }
 
   /**
@@ -117,16 +119,16 @@ export class PayClient {
   }
 
   /**
-   * Create the one-off direct debit
+   * Create a one-off direct debit mandate
    * @param data
    */
   async createDirectDebit(
     data: Omit<CreateDirectDebitRequest, "serviceId">
   ): Promise<CreateDirectDebitResponse | void> {
     if (this.httpClient_.testMode) {
-      console.log("createDirectDebit", data)
+      this.logger_.info(`createDirectDebit skipped ${JSON.stringify(data)}`)
     } else {
-      return await this.httpClient_.restApiV3Request<
+      return await this.httpClient_.apiRequest<
         CreateDirectDebitRequest,
         CreateDirectDebitResponse
       >({
@@ -134,26 +136,41 @@ export class PayClient {
         data: {
           ...data,
           serviceId: this.serviceId_,
+          stats: {
+            object: `${displayName}|version ${version}`,
+          },
         },
       })
     }
   }
 
   /**
-   * Create the one-off direct debit
-   * @param data
+   * Retrieve a direct debit by its reference id. Unlike the mandate query this
+   * endpoint returns the direct debit object itself, not a paginated envelope.
+   * @param directDebitId
    */
   async getDirectDebitInfo(
+    directDebitId: string
+  ): Promise<DirectDebit | DirectDebitInfoResponse> {
+    return await this.httpClient_.apiRequest({
+      endpoint: PayApiPath.DIRECT_DEBIT_INFO.replace("{id}", directDebitId),
+      method: "GET",
+    })
+  }
+
+  /**
+   * Retrieve direct debit info by the mandate code
+   * @param mandateId
+   */
+  async getDirectDebitInfoByMandate(
     mandateId: string
   ): Promise<DirectDebitInfoResponse> {
-    return await this.httpClient_.restApiV3Request<
-      DirectDebitInfoRequest,
-      DirectDebitInfoResponse
-    >({
-      endpoint: PayApiPath.DIRECT_DEBIT_INFO,
-      data: {
-        mandateId,
-      },
+    return await this.httpClient_.apiRequest({
+      endpoint: PayApiPath.DIRECT_DEBIT_INFO_BY_MANDATE.replace(
+        "{id}",
+        mandateId
+      ),
+      method: "GET",
     })
   }
 }

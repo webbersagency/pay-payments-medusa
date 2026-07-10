@@ -39,6 +39,7 @@ import {
   PaymentSessionStatus,
 } from "@medusajs/framework/utils"
 import {
+  CreateDirectDebitRequest,
   CreateOrder,
   GetTransactionFullResponse,
   OrderResponse,
@@ -138,7 +139,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   createPayOrderPayload(
     order: OrderDTO & {customer: CustomerDTO; sales_channel: SalesChannelDTO},
     paymentSession: PaymentSessionDTO
-  ): Omit<CreateOrder, "serviceId"> {
+  ): Omit<CreateOrder, "serviceId"> | Omit<CreateDirectDebitRequest, "serviceId"> {
     const session_id = paymentSession.data?.session_id as string
     const currency = order.currency_code.toUpperCase()
 

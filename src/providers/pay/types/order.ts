@@ -21,12 +21,13 @@ export type PinPaymentMethod = {
 }
 
 export type DirectDebitPaymentMethod = {
-  firstName: string | null
-  lastName: string | null
+  firstName?: string | null
+  lastName?: string | null
+  accountHolder?: string | null
   email: string | null
   city: string | null
   iban: string | null
-  bic: string | null
+  bic?: string | null
   permissionGiven?: boolean
 }
 
@@ -89,93 +90,155 @@ export interface UpdateOrder {
   reference?: string
 }
 
-export interface DirectDebitInfoRequest {
-  mandateId: string
-  referenceId?: string
-}
-
 export interface DirectDebitInfoResponse {
-  request: {
-    result: "0" | "1" // "1" indicates success
-    errorId: string // Error code, if any
-    errorMessage: string // Error message, if any
+  total: number
+  count: number
+  pages: number
+  directdebits: DirectDebit[]
+  _links?: Record<string, {href: string; rel?: string; type?: string}>
+}
+
+export interface DirectDebit {
+  id: string
+  description: string
+  url: string
+  processDate: string
+  orderId: string // The Pay. transaction id of the collection, used for refunds
+  paymentSessionId: string
+  type: "SINGLE" | "RECURRING" | "FLEXIBLE"
+  amount: {
+    value: number
+    currency: string
   }
-  result: {
-    mandate: Mandate
-    directDebit: DirectDebit[]
+  status: {
+    code: number
+    action: string
+    phase: string
   }
+  declined: boolean
+  decline: {
+    code: string
+    reason: string
+    date: string
+  } | null
+  bankAccount: {
+    iban: string
+    bic: string
+    owner: string
+  }
+  mandate: {
+    code: string
+    description: string
+    reference: string
+  }
+  service: {
+    code: string
+    name: string
+  }
+  merchant: {
+    code: string
+    name: string
+    status: "ACTIVE" | "INACTIVE"
+    incorporationCountry: string
+  }
+  stats: DirectDebitStats
+  createdAt: string
+  createdBy: string
+  modifiedAt: string
+  modifiedBy: string
+  deletedAt: string | null
+  deletedBy: string | null
 }
 
-interface Mandate {
-  mandateId: string // Mandate ID
-  type: MandateType // Type of mandate, e.g., "single"
-  bankaccountNumber: string // Customer's IBAN
-  bankaccounOwner: string // Customer's name (note: typo in key)
-  bankaccountBic: string // Customer's BIC code
-  amount: string // Amount in cents (e.g., "995" for €9.95)
-  description: string // Description of the mandate
-  intervalValue: string // Interval value (e.g., "0")
-  intervalPeriod: string // Interval period (e.g., "0")
-  intervalQuantity: string // Interval quantity (e.g., "1")
-  state: MandateState // State of the mandate, e.g., "single"
-  ipAddress: string // Customer's IP address
-  email: string // Customer's email address
-  promotorId: string // Promotor ID
-  tool: string // Tool variable
-  info: string // Info variable
-  extra1: string // Additional info 1
-  extra2: string // Additional info 2
-  extra3: string // Additional info 3
+interface DirectDebitStats {
+  info?: string | null
+  tool?: string | null
+  object?: string | null
+  extra1?: string | null
+  extra2?: string | null
+  extra3?: string | null
+  domainId?: string | null
 }
-
-interface DirectDebit {
-  referenceId: string // Unique reference ID for the direct debit
-  bankaccountNumber: string // IBAN of the customer
-  bankaccountHolder: string // Name of the account holder
-  bankaccountBic: string // BIC code of the account
-  paymentSessionId: string // Payment session ID
-  amount: string // Amount in cents
-  description: string // Description of the direct debit
-  sendDate: string // Date the direct debit was sent
-  receiveDate: string // Date the funds were received
-  statusCode: string // Status code of the transaction
-  statusName: string // Status name of the transaction
-  declineCode: string // Decline reason code
-  declineName: string // Decline reason name
-  declineDate: string // Decline date, if applicable
-}
-
-type MandateType = "single" | "recurring"
-type MandateState = "first" | "active" | "last" | "single"
 
 export interface CreateDirectDebitRequest {
-  reference: string // Reference
   serviceId: string // SL-code
-  amount: number // Amount in cents
-  bankaccountHolder: string // Name of the customer
-  bankaccountNumber: string // IBAN number of the customer
-  processDate?: string // The date on which the direct debit should be processed (dd-mm-yyyy)
+  reference: string // Reference
   description?: string // Description of the direct debit instruction
-  currency?: string // Currency according to ISO 4217 (three-letter code). If empty, EUR will be used. See https://admin.pay.nl/data/currencies for a list.
+  processDate?: string // The date on which the direct debit should be processed (dd-mm-yyyy)
   exchangeUrl?: string // The exchange URL to be used for this direct debit
-  ipAddress?: string // IP address of the customer
-  email?: string // Email address of the customer
-  promotorId?: number // The ID of the promoter (webmaster)
-  tool?: string // 'Tool' variable that can be traced in statistics
-  info?: string // 'Info' variable that can be traced in statistics
-  object?: string // 'Object' variable that can be traced in statistics
-  extra1?: string // 'Extra1' variable that can be traced in statistics
-  extra2?: string // 'Extra2' variable that can be traced in statistics
-  extra3?: string // 'Extra3' variable that can be traced in statistics
+  type?: "SINGLE" | "RECURRING" | "FLEXIBLE"
+  interval?: {
+    period?: "day" | "week" | "month" | "trimester" | "halfyear" | "year"
+    quantity?: number
+    value?: number
+  }
+  amount: {
+    value: number // Amount in cents
+    currency?: string
+  }
+  customer: {
+    ipAddress?: string
+    email: string
+    bankAccount: {
+      iban: string
+      bic?: string
+      owner: string
+    }
+  }
+  stats?: DirectDebitStats
 }
 
 export interface CreateDirectDebitResponse {
-  request: {
-    result: "0" | "1"
-    errorId: string
-    errorMessage: string
+  code: string // The mandate code, used to retrieve the direct debit later
+  serviceId: string
+  reference: string
+  description: string
+  processDate: string
+  exchangeUrl: string | null
+  type: "SINGLE" | "RECURRING" | "FLEXIBLE"
+  interval: {
+    value: number
+    quantity: number
+    period: string
   }
-  result: string
+  amount: {
+    value: number
+    currency: string
+  }
+  customer: {
+    email: string
+    ipAddress: string
+    bankAccount: {
+      iban: string
+      bic: string
+      owner: string
+    }
+  }
+  service: {
+    code: string
+    name: string
+  }
+  merchant: {
+    code: string
+    name: string
+    status: string
+    incorporationCountry: string
+  }
+  stats: DirectDebitStats
+  lastDirectDebitDate: string | null
+  nextDirectDebitDate: string | null
+  actualDirectDebitDate: string | null
+  createdAt: string
+  createdBy: string
+  modifiedAt: string
+  modifiedBy: string
+  deletedAt: string | null
+  deletedBy: string | null
+  _links?: {
+    href: string
+    rel: string
+    type: string
+  }[]
 }
 
 export interface OrderResponse extends PayErrorResponse {
