@@ -5,9 +5,14 @@ const PAY_TRANSACTION_ID = "52801234567X1001"
 
 function makeService() {
   const logger = {info: jest.fn(), warn: jest.fn(), error: jest.fn()}
+  const sessionRetrieve = jest.fn().mockRejectedValue(new Error("no session"))
 
   const service = new PayDirectDebitService(
-    {logger, event_bus: {emit: jest.fn()}},
+    {
+      logger,
+      event_bus: {emit: jest.fn()},
+      paymentSessionService: {retrieve: sessionRetrieve},
+    },
     {
       atCode: "AT-TEST-0001",
       apiToken: "test-at-secret",
@@ -38,6 +43,7 @@ function makeService() {
   return {
     service,
     logger,
+    sessionRetrieve,
     createDirectDebit,
     getDirectDebitInfoByMandate,
     getOrder,
@@ -464,5 +470,78 @@ describe("PayDirectDebitService test mode simulation", () => {
     expect(refundPayment).not.toHaveBeenCalled()
     expect(getDirectDebitInfoByMandate).not.toHaveBeenCalled()
     expect(result.data).toEqual({code: "TEST-payses_1", testMode: true})
+  })
+})
+
+describe("PayDirectDebitService session data fallback", () => {
+  const SNAPSHOT = {
+    session_id: "payses_1",
+    paymentMethodInput: {iban: "NL02ABNA0123456789"},
+  }
+
+  it("captures via the mandate stored on the session when the payment only holds the authorize snapshot", async () => {
+    const {service, sessionRetrieve, getDirectDebitInfoByMandate} =
+      makeService()
+    sessionRetrieve.mockResolvedValue({
+      id: "payses_1",
+      data: {code: MANDATE_CODE},
+    })
+    getDirectDebitInfoByMandate.mockResolvedValue(directDebitInfo(100))
+
+    const result = await service.capturePayment({data: SNAPSHOT} as any)
+
+    expect(sessionRetrieve).toHaveBeenCalledWith("payses_1", {
+      select: ["id", "data"],
+    })
+    expect(getDirectDebitInfoByMandate).toHaveBeenCalledWith(MANDATE_CODE)
+    expect((result.data as any).orderId).toBe(PAY_TRANSACTION_ID)
+    expect((result.data as any).code).toBe(MANDATE_CODE)
+  })
+
+  it("simulates the capture when the simulated mandate lives on the session", async () => {
+    const {service, sessionRetrieve, getDirectDebitInfoByMandate} =
+      makeService()
+    sessionRetrieve.mockResolvedValue({
+      id: "payses_1",
+      data: {code: "TEST-payses_1", testMode: true},
+    })
+
+    const result = await service.capturePayment({data: SNAPSHOT} as any)
+
+    expect(getDirectDebitInfoByMandate).not.toHaveBeenCalled()
+    expect((result.data as any).status.code).toBe(100)
+    expect((result.data as any).testMode).toBe(true)
+  })
+
+  it("keeps the original error when the session cannot be resolved", async () => {
+    const {service, logger} = makeService()
+
+    await expect(
+      service.capturePayment({data: SNAPSHOT} as any)
+    ).rejects.toThrow("No mandate code found on the payment data")
+
+    expect(logger.warn).toHaveBeenCalled()
+  })
+
+  it("revokes the mandate stored on the session when canceling", async () => {
+    const {service, sessionRetrieve, deleteDirectDebitMandate} = makeService()
+    sessionRetrieve.mockResolvedValue({
+      id: "payses_1",
+      data: {code: MANDATE_CODE},
+    })
+    deleteDirectDebitMandate.mockResolvedValue(undefined)
+
+    await service.cancelPayment({data: SNAPSHOT} as any)
+
+    expect(deleteDirectDebitMandate).toHaveBeenCalledWith(MANDATE_CODE)
+  })
+
+  it("does not look up the session when the payment data already holds a mandate", async () => {
+    const {service, sessionRetrieve, deleteDirectDebitMandate} = makeService()
+    deleteDirectDebitMandate.mockResolvedValue(undefined)
+
+    await service.cancelPayment({data: {code: MANDATE_CODE}} as any)
+
+    expect(sessionRetrieve).not.toHaveBeenCalled()
   })
 })

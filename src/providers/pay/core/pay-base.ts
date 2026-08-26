@@ -306,6 +306,49 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   }
 
   /**
+   * Medusa snapshots a payment's data when the session is authorized, which
+   * happens before the orderCreated hook creates the Pay. order or mandate,
+   * so the Pay. reference only lands on the payment session. When the payment
+   * data carries no Pay. reference yet, resolve the session it points at and
+   * merge the session data in. Callers return the merged data, so Medusa
+   * persists it back onto the payment on the first successful call.
+   */
+  protected async withSessionData(
+    data: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    if (data.orderId || data.code || !data.session_id) {
+      return data
+    }
+
+    try {
+      const sessionService = (this.container as Record<string, any>)
+        .paymentSessionService
+
+      const session = await sessionService.retrieve(
+        data.session_id as string,
+        {select: ["id", "data"]}
+      )
+
+      const sessionData = (session?.data ?? {}) as Record<string, unknown>
+
+      if (sessionData.orderId || sessionData.code) {
+        this.debug_ &&
+          this.logger_.info(
+            `Resolved Pay. data for payment from session ${data.session_id}`
+          )
+
+        return {...data, ...sessionData}
+      }
+    } catch (error) {
+      this.logger_.warn(
+        `Could not resolve payment session ${data.session_id}: ${error.message}`
+      )
+    }
+
+    return data
+  }
+
+  /**
    * Captures an authorized payment if autoCapture is disabled
    * @param input - The payment capture input
    * @returns The capture result
@@ -313,7 +356,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   async capturePayment(
     input: CapturePaymentInput
   ): Promise<CapturePaymentOutput> {
-    const id = input.data?.orderId as string
+    const data = await this.withSessionData(
+      (input.data ?? {}) as Record<string, unknown>
+    )
+    const id = data.orderId as string
 
     if (!id) {
       throw new MedusaError(
@@ -379,7 +425,9 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     data,
     context,
   }: RefundPaymentInput): Promise<RefundPaymentOutput> {
-    const orderData = data as unknown as OrderResponse
+    const orderData = (await this.withSessionData(
+      (data ?? {}) as Record<string, unknown>
+    )) as unknown as OrderResponse
     const id = orderData?.orderId
 
     if (!id) {
@@ -430,7 +478,10 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
    * @returns The cancellation result
    */
   async cancelPayment(input: CancelPaymentInput): Promise<CancelPaymentOutput> {
-    const id = input.data?.orderId as string
+    const enriched = await this.withSessionData(
+      (input.data ?? {}) as Record<string, unknown>
+    )
+    const id = enriched.orderId as string
 
     if (!id) {
       return {}

@@ -160,7 +160,9 @@ class PayDirectDebitService extends PayBase {
   async retrievePayment(
     input: RetrievePaymentInput
   ): Promise<RetrievePaymentOutput> {
-    const data = (input.data ?? {}) as Record<string, unknown>
+    const data = await this.withSessionData(
+      (input.data ?? {}) as Record<string, unknown>
+    )
 
     if (data.id || data.orderId) {
       return await super.retrievePayment({
@@ -188,10 +190,12 @@ class PayDirectDebitService extends PayBase {
   async cancelPayment(
     input: CancelPaymentInput
   ): Promise<CancelPaymentOutput> {
-    const data = (input.data ?? {}) as Record<string, unknown>
+    const data = await this.withSessionData(
+      (input.data ?? {}) as Record<string, unknown>
+    )
 
     if (data.orderId) {
-      return await super.cancelPayment(input)
+      return await super.cancelPayment({...input, data})
     }
 
     const mandateId = this.readMandateId(data)
@@ -225,10 +229,12 @@ class PayDirectDebitService extends PayBase {
   async capturePayment(
     input: CapturePaymentInput
   ): Promise<CapturePaymentOutput> {
-    const data = (input.data ?? {}) as Record<string, unknown>
+    const data = await this.withSessionData(
+      (input.data ?? {}) as Record<string, unknown>
+    )
 
     if (data.orderId) {
-      return await super.capturePayment(input)
+      return await super.capturePayment({...input, data})
     }
 
     // A payment created in test mode has no mandate at Pay., the capture is
@@ -284,7 +290,9 @@ class PayDirectDebitService extends PayBase {
    * the mandate when missing.
    */
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentOutput> {
-    const data = (input.data ?? {}) as Record<string, any>
+    const data = (await this.withSessionData(
+      (input.data ?? {}) as Record<string, unknown>
+    )) as Record<string, any>
 
     if (data.testMode === true && (this.options_.testMode ?? true)) {
       this.logger_.info(
