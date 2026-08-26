@@ -173,4 +173,23 @@ export class PayClient {
       method: "GET",
     })
   }
+
+  /**
+   * Delete a mandate so no further direct debits can be executed on it. Test
+   * mode never creates a mandate, so there is nothing to delete there.
+   * @param mandateId
+   */
+  async deleteDirectDebitMandate(mandateId: string): Promise<void> {
+    if (this.httpClient_.testMode) {
+      this.logger_.info(
+        `deleteDirectDebitMandate skipped for mandate ${mandateId}`
+      )
+      return
+    }
+
+    await this.httpClient_.apiRequest({
+      endpoint: PayApiPath.DIRECT_DEBIT_MANDATE.replace("{id}", mandateId),
+      method: "DELETE",
+    })
+  }
 }

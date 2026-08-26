@@ -1,5 +1,7 @@
 import {CustomerDTO, OrderDTO, SalesChannelDTO} from "@medusajs/framework/types"
 import {
+  CancelPaymentInput,
+  CancelPaymentOutput,
   CapturePaymentInput,
   CapturePaymentOutput,
   PaymentSessionDTO,
@@ -168,6 +170,43 @@ class PayDirectDebitService extends PayBase {
     const info = await this.client_.getDirectDebitInfoByMandate(mandateId)
 
     return {data: info as unknown as Record<string, unknown>}
+  }
+
+  /**
+   * A mandate based direct debit is revoked by deleting the mandate at Pay.,
+   * so a pending collection is never executed for a canceled payment. The
+   * order API abort only applies to payments that hold a Pay. order id.
+   */
+  async cancelPayment(
+    input: CancelPaymentInput
+  ): Promise<CancelPaymentOutput> {
+    const data = (input.data ?? {}) as Record<string, unknown>
+
+    if (data.orderId) {
+      return await super.cancelPayment(input)
+    }
+
+    const mandateId = this.readMandateId(data)
+
+    if (!mandateId) {
+      // Nothing was created at Pay. (e.g. test mode), nothing to revoke
+      return {data}
+    }
+
+    try {
+      await this.client_.deleteDirectDebitMandate(mandateId)
+
+      this.logger_.info(
+        `Pay. direct debit mandate ${mandateId} deleted, no further collections will be executed`
+      )
+
+      return {data}
+    } catch (error) {
+      this.logger_.error(
+        `Error deleting Pay. direct debit mandate ${mandateId}: ${error.message}`
+      )
+      throw error
+    }
   }
 
   /**

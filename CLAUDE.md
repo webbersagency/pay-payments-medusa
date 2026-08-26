@@ -14,7 +14,7 @@ Package manager: **pnpm** (10.9.0). Node >= 20.
 - `pnpm build` — runs `medusa plugin:build`; emits to `.medusa/server/` (this is what gets published — see `files` / `exports` in `package.json`).
 - `pnpm prepublishOnly` — build hook that runs before `pnpm publish`.
 
-There are no tests, no lint, no typecheck scripts. TypeScript is validated implicitly during `medusa plugin:build`.
+`pnpm test` runs the jest suite (`jest src`), which CI runs on every push/PR. There are no lint or typecheck scripts; TypeScript is validated implicitly during `medusa plugin:build`.
 
 ## Architecture
 
@@ -29,7 +29,7 @@ This plugin **bypasses Medusa's normal "create payment session → authorize →
 1. `initiatePayment` is a no-op that just returns a session_id.
 2. The real Pay. order is created in `src/workflows/hooks/complete-cart-order-created.ts`, which hooks `completeCartWorkflow.hooks.orderCreated` and calls `createPayOrder` (`src/utils/createPayOrder.ts`). This is because Pay.'s BNPL / after-pay methods need real order data (line items, addresses) before they can be initiated.
 3. `createPayOrder` looks up the order's payment session (via `getPayPaymentSession`), instantiates the matching service class, builds the Pay. payload, and stores it via `updatePaymentSession` — which triggers `PayBase.updatePayment`, which calls `PayClient.createOrder` against Pay.'s TGU.
-4. Direct Debit (`PaymentProviderKeys.DIRECTDEBIT`) is special: payment collection is set to `AWAITING` (other methods go to `NOT_PAID`) and the session is marked `captured` synchronously. It is not created through the order API but through the mandate API (`POST /directdebits/mandates`, `PayDirectDebitService.updatePayment`); the mandate response (its `code` is the mandate id) becomes the session data. Collection status changes arrive later via incasso exchanges (see Webhooks).
+4. Direct Debit (`PaymentProviderKeys.DIRECTDEBIT`) is special: payment collection is set to `AWAITING` (other methods go to `NOT_PAID`) and the session is marked `captured` synchronously. It is not created through the order API but through the mandate API (`POST /directdebits/mandates`, `PayDirectDebitService.updatePayment`); the mandate response (its `code` is the mandate id) becomes the session data. Canceling such a payment deletes the mandate at Pay. (`DELETE /directdebits/mandates/{code}`, `PayDirectDebitService.cancelPayment`) so a pending collection is never executed; payments holding a Pay. order id still cancel through the order API abort. Collection status changes arrive later via incasso exchanges (see Webhooks).
 
 Consequence: **orders are created in Medusa before payment is captured**. If the Pay. payment expires/cancels, the order is cancelled via the `pay_payment.canceled` subscriber. Storefront subscribers should listen to `payment.captured`, not `order.placed`.
 

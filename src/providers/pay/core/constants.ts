@@ -21,6 +21,7 @@ export const PayApiPath = {
   GET_TRANSACTION: "/transactions/{id}",
   TRANSACTION_REFUND: "/transactions/{id}/refund",
   DIRECT_DEBIT: "/directdebits/mandates",
+  DIRECT_DEBIT_MANDATE: "/directdebits/mandates/{id}",
   DIRECT_DEBIT_INFO: "/directdebits/{id}",
   DIRECT_DEBIT_INFO_BY_MANDATE: "/directdebits?mandate[eq]={id}",
 }

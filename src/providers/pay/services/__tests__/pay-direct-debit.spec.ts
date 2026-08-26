@@ -23,12 +23,16 @@ function makeService() {
   const getOrder = jest.fn()
   const getTransaction = jest.fn()
   const refundPayment = jest.fn()
+  const abortOrder = jest.fn()
+  const deleteDirectDebitMandate = jest.fn()
   ;(service as any).client_ = {
     createDirectDebit,
     getDirectDebitInfoByMandate,
     getOrder,
     getTransaction,
     refundPayment,
+    abortOrder,
+    deleteDirectDebitMandate,
   }
 
   return {
@@ -39,6 +43,8 @@ function makeService() {
     getOrder,
     getTransaction,
     refundPayment,
+    abortOrder,
+    deleteDirectDebitMandate,
   }
 }
 
@@ -339,5 +345,60 @@ describe("PayDirectDebitService.refundPayment", () => {
       "No Pay. transaction found for this direct debit, cannot refund."
     )
     expect(refundPayment).not.toHaveBeenCalled()
+  })
+})
+
+describe("PayDirectDebitService.cancelPayment", () => {
+  it("deletes the mandate at Pay. when the payment holds a mandate code", async () => {
+    const {service, deleteDirectDebitMandate} = makeService()
+    deleteDirectDebitMandate.mockResolvedValue(undefined)
+
+    const result = await service.cancelPayment({
+      data: {code: MANDATE_CODE},
+    } as any)
+
+    expect(deleteDirectDebitMandate).toHaveBeenCalledWith(MANDATE_CODE)
+    expect(result).toEqual({data: {code: MANDATE_CODE}})
+  })
+
+  it("delegates to the order API abort when the payment holds a Pay. order id", async () => {
+    const {service, getOrder, abortOrder, deleteDirectDebitMandate} =
+      makeService()
+    getOrder.mockResolvedValue({status: {code: 20}})
+    abortOrder.mockResolvedValue({
+      orderId: PAY_TRANSACTION_ID,
+      status: {code: 90},
+    })
+
+    const result = await service.cancelPayment({
+      data: {orderId: PAY_TRANSACTION_ID},
+    } as any)
+
+    expect(abortOrder).toHaveBeenCalledWith(PAY_TRANSACTION_ID)
+    expect(deleteDirectDebitMandate).not.toHaveBeenCalled()
+    expect(result.data).toEqual({
+      orderId: PAY_TRANSACTION_ID,
+      status: {code: 90},
+    })
+  })
+
+  it("does not contact Pay. when the payment holds no mandate code", async () => {
+    const {service, deleteDirectDebitMandate} = makeService()
+
+    const result = await service.cancelPayment({data: {}} as any)
+
+    expect(deleteDirectDebitMandate).not.toHaveBeenCalled()
+    expect(result).toEqual({data: {}})
+  })
+
+  it("rethrows when the mandate cannot be deleted, so the cancel is not silently lost", async () => {
+    const {service, logger, deleteDirectDebitMandate} = makeService()
+    deleteDirectDebitMandate.mockRejectedValue(new Error("mandate not found"))
+
+    await expect(
+      service.cancelPayment({data: {code: MANDATE_CODE}} as any)
+    ).rejects.toThrow("mandate not found")
+
+    expect(logger.error).toHaveBeenCalled()
   })
 })
