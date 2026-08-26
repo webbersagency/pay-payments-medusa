@@ -319,6 +319,13 @@ export const payPaymentMethods: PaymentMethod[] = [
   }, // Not collecting funds
   {id: 1903, name: "Amazon Pay", type: "alternative"},
   {
+    id: 1657,
+    name: "GivaCard",
+    value: PaymentProviderKeys.GIVACARD,
+    type: "alternative",
+    countries: ["nl"],
+  },
+  {
     id: 553,
     name: "Paysafecard",
     type: "alternative",
