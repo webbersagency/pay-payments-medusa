@@ -186,7 +186,7 @@ describe("PayDirectDebitService.updatePayment", () => {
     expect(result.data).toEqual({code: MANDATE_CODE})
   })
 
-  it("keeps the session data when test mode skips the mandate creation", async () => {
+  it("stores a simulated mandate when test mode skips the mandate creation", async () => {
     const {service, createDirectDebit} = makeService()
     createDirectDebit.mockResolvedValue(undefined)
 
@@ -194,7 +194,11 @@ describe("PayDirectDebitService.updatePayment", () => {
       data: {session_id: "payses_1", payload: {reference: "1001"}},
     } as any)
 
-    expect(result.data).toEqual({session_id: "payses_1"})
+    expect(result.data).toEqual({
+      session_id: "payses_1",
+      code: "TEST-payses_1",
+      testMode: true,
+    })
   })
 
   it("passes data through when no payload is present", async () => {
@@ -400,5 +404,65 @@ describe("PayDirectDebitService.cancelPayment", () => {
     ).rejects.toThrow("mandate not found")
 
     expect(logger.error).toHaveBeenCalled()
+  })
+})
+
+describe("PayDirectDebitService test mode simulation", () => {
+  it("simulates the capture for a test created payment while in test mode", async () => {
+    const {service, getDirectDebitInfoByMandate} = makeService()
+
+    const result = await service.capturePayment({
+      data: {code: "TEST-payses_1", testMode: true},
+    } as any)
+
+    expect(getDirectDebitInfoByMandate).not.toHaveBeenCalled()
+    expect((result.data as any).status.code).toBe(100)
+  })
+
+  it("fails closed when a test created payment is captured on a production server", async () => {
+    const {service, getDirectDebitInfoByMandate} = makeService()
+    ;(service as any).options_.testMode = false
+    getDirectDebitInfoByMandate.mockResolvedValue({directdebits: []})
+
+    await expect(
+      service.capturePayment({
+        data: {code: "TEST-payses_1", testMode: true},
+      } as any)
+    ).rejects.toThrow()
+  })
+
+  it("does not query Pay. when retrieving a test created payment", async () => {
+    const {service, getDirectDebitInfoByMandate} = makeService()
+
+    const result = await service.retrievePayment({
+      data: {code: "TEST-payses_1", testMode: true},
+    } as any)
+
+    expect(getDirectDebitInfoByMandate).not.toHaveBeenCalled()
+    expect(result.data).toEqual({code: "TEST-payses_1", testMode: true})
+  })
+
+  it("does not delete anything at Pay. when canceling a test created payment", async () => {
+    const {service, deleteDirectDebitMandate} = makeService()
+
+    const result = await service.cancelPayment({
+      data: {code: "TEST-payses_1", testMode: true},
+    } as any)
+
+    expect(deleteDirectDebitMandate).not.toHaveBeenCalled()
+    expect(result.data).toEqual({code: "TEST-payses_1", testMode: true})
+  })
+
+  it("simulates the refund for a test created payment while in test mode", async () => {
+    const {service, refundPayment, getDirectDebitInfoByMandate} = makeService()
+
+    const result = await service.refundPayment({
+      data: {code: "TEST-payses_1", testMode: true},
+      amount: 40.5,
+    } as any)
+
+    expect(refundPayment).not.toHaveBeenCalled()
+    expect(getDirectDebitInfoByMandate).not.toHaveBeenCalled()
+    expect(result.data).toEqual({code: "TEST-payses_1", testMode: true})
   })
 })

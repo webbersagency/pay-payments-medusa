@@ -46,7 +46,7 @@ The hooks route must preserve the raw body for HMAC verification — see `src/ap
 ### Pay. HTTP clients
 `PayClient` (`src/providers/pay/core/pay-client.ts`) wraps two Pay. API surfaces handled by `HttpClient`:
 - `tguRequest` — order lifecycle (`/orders`, `/orders/{id}/capture|abort|status`) at the TGU host (configurable via `options.tguApiUrl`).
-- `apiRequest` — config + transaction status + refunds + direct debit mandates (`/directdebits/*`) at REST API v2. `createDirectDebit` is a no-op (log only) in test mode.
+- `apiRequest` — config + transaction status + refunds + direct debit mandates (`/directdebits/*`) at REST API v2. `createDirectDebit` is a no-op (log only) in test mode; the service then stores a simulated mandate (`code: TEST-<session_id>`, `testMode: true`) whose capture/refund succeed without contacting Pay. only while `testMode` is still active, so test servers can run the full direct debit flow.
 
 All requests use HTTP Basic auth with `atCode:apiToken`. In test mode, `integration.test = true` is merged into JSON bodies.
 

@@ -127,8 +127,16 @@ class PayDirectDebitService extends PayBase {
       const response = await this.client_.createDirectDebit(payload)
 
       if (!response) {
-        // Test mode does not create a mandate, keep the existing session data
-        return {data}
+        // Test mode does not create a mandate at Pay., store a clearly marked
+        // fake one so the Medusa side of the flow (capture, refund) stays
+        // testable. capturePayment only honors it while testMode is active.
+        const testCode = `TEST-${data.session_id ?? payload.reference}`
+
+        this.logger_.info(
+          `Pay. direct debit test mode: storing simulated mandate ${testCode}`
+        )
+
+        return {data: {...data, code: testCode, testMode: true}}
       }
 
       this.logger_.info(
@@ -163,7 +171,7 @@ class PayDirectDebitService extends PayBase {
 
     const mandateId = this.readMandateId(data)
 
-    if (!mandateId) {
+    if (!mandateId || data.testMode === true) {
       return {data}
     }
 
@@ -188,7 +196,7 @@ class PayDirectDebitService extends PayBase {
 
     const mandateId = this.readMandateId(data)
 
-    if (!mandateId) {
+    if (!mandateId || data.testMode === true) {
       // Nothing was created at Pay. (e.g. test mode), nothing to revoke
       return {data}
     }
@@ -221,6 +229,22 @@ class PayDirectDebitService extends PayBase {
 
     if (data.orderId) {
       return await super.capturePayment(input)
+    }
+
+    // A payment created in test mode has no mandate at Pay., the capture is
+    // simulated so test servers can run the full flow. It only succeeds while
+    // the server still runs in test mode, a production server fails closed.
+    if (data.testMode === true && (this.options_.testMode ?? true)) {
+      this.logger_.info(
+        `Pay. direct debit test mode: simulating capture for ${data.code}`
+      )
+
+      return {
+        data: {
+          ...data,
+          status: {code: PayDirectDebitStatusCode.COLLECTED},
+        },
+      }
     }
 
     const mandateId = this.readMandateId(data)
@@ -261,6 +285,14 @@ class PayDirectDebitService extends PayBase {
    */
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentOutput> {
     const data = (input.data ?? {}) as Record<string, any>
+
+    if (data.testMode === true && (this.options_.testMode ?? true)) {
+      this.logger_.info(
+        `Pay. direct debit test mode: simulating refund for ${data.code}`
+      )
+
+      return {data}
+    }
 
     let directDebit: DirectDebit | undefined = data.directdebits?.[0]
     let orderId: string | undefined = data.orderId ?? directDebit?.orderId
