@@ -124,22 +124,6 @@ export const createPayOrder = async ({
       ServiceClass.identifier
     )
 
-    if (isDirectDebit) {
-      await paymentModuleService.updatePaymentCollections(
-        payPaymentSession.payment_collection_id as string,
-        {
-          status: PaymentCollectionStatus.AWAITING,
-        }
-      )
-    } else {
-      await paymentModuleService.updatePaymentCollections(
-        payPaymentSession.payment_collection_id as string,
-        {
-          status: PaymentCollectionStatus.NOT_PAID,
-        }
-      )
-    }
-
     const payProviderService = new ServiceClass(container, payProviderOptions)
 
     const updatedPaymentSession =
@@ -164,5 +148,16 @@ export const createPayOrder = async ({
         data: updatedPaymentSession.data,
       })
     }
+
+    // Only flip the collection status once the Pay. order/mandate exists, a
+    // failed attempt must leave the collection retryable for the charge job
+    await paymentModuleService.updatePaymentCollections(
+      payPaymentSession.payment_collection_id as string,
+      {
+        status: isDirectDebit
+          ? PaymentCollectionStatus.AWAITING
+          : PaymentCollectionStatus.NOT_PAID,
+      }
+    )
   }
 }

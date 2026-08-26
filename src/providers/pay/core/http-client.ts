@@ -113,7 +113,7 @@ export class HttpClient {
           } catch (e) {}
         }
 
-        this.throwError(result)
+        this.throwError(result, resp.status, resp.statusText)
       }
 
       return result
@@ -122,15 +122,23 @@ export class HttpClient {
     return response
   }
 
-  protected throwError(error: any) {
-    this.logger.error(JSON.stringify(error))
+  protected throwError(error: any, status?: number, statusText?: string) {
+    const httpInfo = status
+      ? `HTTP ${status}${statusText ? ` ${statusText}` : ""}`
+      : ""
+
+    this.logger.error(
+      `Pay. API error${httpInfo ? ` (${httpInfo})` : ""}: ${JSON.stringify(error)}`
+    )
 
     const message =
       error?.message ??
       error?.detail ??
       error?.violations?.[0]?.message ??
       error?.title ??
-      "There was an error in the the Pay. response"
+      (httpInfo
+        ? `Pay. responded with ${httpInfo} and no error details`
+        : "There was an error in the Pay. response")
 
     const code = error?.violations?.[0]?.code ?? error?.code
 
