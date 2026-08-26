@@ -32,6 +32,7 @@ import PaySatispayService from "./pay-satispay"
 import PayBancomatService from "./pay-bancomat"
 import PayFLOAService from "./pay-floa"
 import PayPixService from "./pay-pix"
+import PayGivacardService from "./pay-givacard"
 
 export type PayServiceClass = {
   readonly identifier: string
@@ -71,6 +72,7 @@ export const serviceClasses = [
   PayBancomatService,
   PayFLOAService,
   PayPixService,
+  PayGivacardService,
 ] as PayServiceClass[]
 
 // Build registry once

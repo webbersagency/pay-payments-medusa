@@ -50,6 +50,7 @@ export const PaymentProviderKeys = {
   BRITE: "pay-brite",
   SWISH: "pay-swish",
   SATISPAY: "pay-satispay",
+  GIVACARD: "pay-givacard",
   BANCOMAT: "pay-bancomat",
   FLOA: "pay-floa",
   PIX: "pay-pix",
