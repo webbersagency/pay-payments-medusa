@@ -24,6 +24,7 @@ function makeService() {
   )
 
   const createDirectDebit = jest.fn()
+  const createDirectDebitV3 = jest.fn()
   const getDirectDebitInfoByMandate = jest.fn()
   const getOrder = jest.fn()
   const getTransaction = jest.fn()
@@ -32,6 +33,7 @@ function makeService() {
   const deleteDirectDebitMandate = jest.fn()
   ;(service as any).client_ = {
     createDirectDebit,
+    createDirectDebitV3,
     getDirectDebitInfoByMandate,
     getOrder,
     getTransaction,
@@ -45,6 +47,7 @@ function makeService() {
     logger,
     sessionRetrieve,
     createDirectDebit,
+    createDirectDebitV3,
     getDirectDebitInfoByMandate,
     getOrder,
     getTransaction,
@@ -165,6 +168,7 @@ describe("PayDirectDebitService.createPayOrderPayload", () => {
 describe("PayDirectDebitService.updatePayment", () => {
   it("creates the mandate and stores the response without the payload", async () => {
     const {service, createDirectDebit} = makeService()
+    ;(service as any).options_.directDebitApiVersion = "v2"
     const response = {code: MANDATE_CODE, reference: "1001"}
     createDirectDebit.mockResolvedValue(response)
 
@@ -194,6 +198,7 @@ describe("PayDirectDebitService.updatePayment", () => {
 
   it("stores a simulated mandate when test mode skips the mandate creation", async () => {
     const {service, createDirectDebit} = makeService()
+    ;(service as any).options_.directDebitApiVersion = "v2"
     createDirectDebit.mockResolvedValue(undefined)
 
     const result = await service.updatePayment({
@@ -543,5 +548,74 @@ describe("PayDirectDebitService session data fallback", () => {
     await service.cancelPayment({data: {code: MANDATE_CODE}} as any)
 
     expect(sessionRetrieve).not.toHaveBeenCalled()
+  })
+})
+
+describe("PayDirectDebitService v3 fallback", () => {
+  const PAYLOAD = {
+    reference: "1001",
+    description: "Shop - #1001",
+    type: "SINGLE",
+    exchangeUrl: "https://shop.test/hooks/pay/pay-direct-debit_pay",
+    amount: {value: 4050, currency: "EUR"},
+    customer: {
+      email: "customer@shop.test",
+      bankAccount: {iban: "NL02ABNA0123456789", owner: "John Doe"},
+    },
+  }
+
+  it("creates the direct debit through the v3 API by default and stores the v2 mandate shape", async () => {
+    const {service, createDirectDebit, createDirectDebitV3} = makeService()
+    createDirectDebitV3.mockResolvedValue({
+      request: {result: "1", errorId: "", errorMessage: ""},
+      result: MANDATE_CODE,
+    })
+
+    const result = await service.updatePayment({
+      data: {session_id: "payses_1", payload: PAYLOAD},
+    } as any)
+
+    expect(createDirectDebit).not.toHaveBeenCalled()
+    expect(createDirectDebitV3).toHaveBeenCalledWith({
+      reference: "1001",
+      amount: 4050,
+      currency: "EUR",
+      bankaccountHolder: "John Doe",
+      bankaccountNumber: "NL02ABNA0123456789",
+      description: "Shop - #1001",
+      exchangeUrl: "https://shop.test/hooks/pay/pay-direct-debit_pay",
+      email: "customer@shop.test",
+    })
+    expect(result.data).toEqual({
+      code: MANDATE_CODE,
+      reference: "1001",
+      amount: {value: 4050, currency: "EUR"},
+      apiVersion: "v3",
+    })
+  })
+
+  it("stores the simulated mandate when v3 test mode skips creation", async () => {
+    const {service, createDirectDebitV3} = makeService()
+    createDirectDebitV3.mockResolvedValue(undefined)
+
+    const result = await service.updatePayment({
+      data: {session_id: "payses_1", payload: PAYLOAD},
+    } as any)
+
+    expect((result.data as any).code).toBe("TEST-payses_1")
+    expect((result.data as any).testMode).toBe(true)
+  })
+
+  it("uses the v2 mandate API when directDebitApiVersion is v2", async () => {
+    const {service, createDirectDebit, createDirectDebitV3} = makeService()
+    ;(service as any).options_.directDebitApiVersion = "v2"
+    createDirectDebit.mockResolvedValue({code: MANDATE_CODE})
+
+    await service.updatePayment({
+      data: {session_id: "payses_1", payload: PAYLOAD},
+    } as any)
+
+    expect(createDirectDebit).toHaveBeenCalled()
+    expect(createDirectDebitV3).not.toHaveBeenCalled()
   })
 })

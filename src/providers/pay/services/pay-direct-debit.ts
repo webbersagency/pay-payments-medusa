@@ -124,7 +124,10 @@ class PayDirectDebitService extends PayBase {
     }
 
     try {
-      const response = await this.client_.createDirectDebit(payload)
+      const response =
+        this.options_.directDebitApiVersion === "v2"
+          ? await this.client_.createDirectDebit(payload)
+          : await this.createDirectDebitViaV3(payload)
 
       if (!response) {
         // Test mode does not create a mandate at Pay., store a clearly marked
@@ -338,6 +341,41 @@ class PayDirectDebitService extends PayBase {
         amount: data.amount ?? directDebit?.amount,
       },
     })
+  }
+
+  /**
+   * Create the debit through the v3 API and normalize the response to the
+   * v2 mandate shape (`code` = mandate id), so every downstream consumer
+   * (exchange subscriber, capture verification) works the same for both
+   * API versions.
+   */
+  protected async createDirectDebitViaV3(
+    payload: Omit<CreateDirectDebitRequest, "serviceId">
+  ): Promise<Record<string, unknown> | void> {
+    const response = await this.client_.createDirectDebitV3({
+      reference: payload.reference,
+      amount: payload.amount.value,
+      currency: payload.amount.currency,
+      bankaccountHolder: payload.customer.bankAccount.owner,
+      bankaccountNumber: payload.customer.bankAccount.iban,
+      description: payload.description,
+      exchangeUrl: payload.exchangeUrl,
+      email: payload.customer.email,
+      ...(payload.customer.ipAddress
+        ? {ipAddress: payload.customer.ipAddress}
+        : {}),
+    })
+
+    if (!response) {
+      return
+    }
+
+    return {
+      code: response.result,
+      reference: payload.reference,
+      amount: payload.amount,
+      apiVersion: "v3",
+    }
   }
 
   protected readMandateId(data: Record<string, any>): string | undefined {

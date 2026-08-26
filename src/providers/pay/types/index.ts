@@ -13,6 +13,15 @@ export type ProviderOptions = {
   testMode?: boolean
   tguApiUrl?: string
   otherSlCodes?: Record<string, string>
+  /**
+   * Which Pay. API creates direct debits. "v3" (default) uses the
+   * rest-api.pay.nl/v3 DirectDebit/debitAdd endpoint; set "v2" to use the
+   * mandate API (rest.pay.nl/v2/directdebits/mandates), which reports
+   * refunds/chargebacks but requires the account to have access to the v2
+   * directdebits endpoints (403 otherwise). The created debit is stored in
+   * the same shape either way, so switching requires no data migration.
+   */
+  directDebitApiVersion?: "v2" | "v3"
 }
 
 export type PaymentOptions = {

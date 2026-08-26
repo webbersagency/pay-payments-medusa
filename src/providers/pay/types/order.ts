@@ -160,6 +160,30 @@ interface DirectDebitStats {
   domainId?: string | null
 }
 
+export interface CreateDirectDebitV3Request {
+  reference: string
+  serviceId: string // SL-code
+  amount: number // Amount in cents
+  bankaccountHolder: string // Name of the customer
+  bankaccountNumber: string // IBAN number of the customer
+  processDate?: string // The date on which the direct debit should be processed (dd-mm-yyyy)
+  description?: string // Description of the direct debit instruction
+  currency?: string // Currency according to ISO 4217 (three-letter code), EUR when empty
+  exchangeUrl?: string // The exchange URL to be used for this direct debit
+  ipAddress?: string // IP address of the customer
+  email?: string // Email address of the customer
+  object?: string // 'Object' stats variable, reports the plugin version
+}
+
+export interface CreateDirectDebitV3Response {
+  request: {
+    result: "0" | "1"
+    errorId: string
+    errorMessage: string
+  }
+  result: string // The mandate id (IO-....) of the created direct debit
+}
+
 export interface CreateDirectDebitRequest {
   serviceId: string // SL-code
   reference: string // Reference

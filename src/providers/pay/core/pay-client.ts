@@ -3,6 +3,8 @@ import {
   CapturesRefundResponse,
   CreateDirectDebitRequest,
   CreateDirectDebitResponse,
+  CreateDirectDebitV3Request,
+  CreateDirectDebitV3Response,
   CreateOrder,
   DirectDebit,
   DirectDebitInfoResponse,
@@ -172,6 +174,40 @@ export class PayClient {
       ),
       method: "GET",
     })
+  }
+
+  /**
+   * Create a one-off direct debit through the v3 API. The response's result
+   * is the mandate id, same as the v2 mandate code.
+   * @param data
+   */
+  async createDirectDebitV3(
+    data: Omit<CreateDirectDebitV3Request, "serviceId">
+  ): Promise<CreateDirectDebitV3Response | void> {
+    if (this.httpClient_.testMode) {
+      this.logger_.info(`createDirectDebitV3 skipped ${JSON.stringify(data)}`)
+      return
+    }
+
+    const response = await this.httpClient_.restApiV3Request<
+      CreateDirectDebitV3Request,
+      CreateDirectDebitV3Response
+    >({
+      endpoint: PayApiPath.DIRECT_DEBIT_V3,
+      data: {
+        ...data,
+        serviceId: this.serviceId_,
+        object: `${displayName}|version ${version}`,
+      },
+    })
+
+    if (response?.request?.result !== "1") {
+      throw new Error(
+        `Pay. v3 direct debit failed: [${response?.request?.errorId}] ${response?.request?.errorMessage}`
+      )
+    }
+
+    return response
   }
 
   /**

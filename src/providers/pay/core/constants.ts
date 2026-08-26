@@ -8,6 +8,7 @@ export const PAY_CACHE_KEY = {
 
 export const PayEnvironmentPaths = {
   REST_API: "https://rest.pay.nl/v2",
+  REST_API_v3: "https://rest-api.pay.nl/v3",
   TGU_API: "https://connect.pay.nl/v1",
 }
 
@@ -21,6 +22,7 @@ export const PayApiPath = {
   GET_TRANSACTION: "/transactions/{id}",
   TRANSACTION_REFUND: "/transactions/{id}/refund",
   DIRECT_DEBIT: "/directdebits/mandates",
+  DIRECT_DEBIT_V3: "/DirectDebit/debitAdd/json",
   DIRECT_DEBIT_MANDATE: "/directdebits/mandates/{id}",
   DIRECT_DEBIT_INFO: "/directdebits/{id}",
   DIRECT_DEBIT_INFO_BY_MANDATE: "/directdebits?mandate[eq]={id}",
