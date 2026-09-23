@@ -5,10 +5,15 @@ import {
 } from "@medusajs/framework/utils"
 import {capturePaymentWorkflow} from "@medusajs/core-flows"
 import {PayClient} from "../../providers/pay/core/pay-client"
+import {reverseCapturedPayment} from "../../utils/reverseCapturedPayment"
 import directDebitExchangeHandler from "../direct-debit-exchange"
 
 jest.mock("@medusajs/core-flows", () => ({
   capturePaymentWorkflow: jest.fn(),
+}))
+
+jest.mock("../../utils/reverseCapturedPayment", () => ({
+  reverseCapturedPayment: jest.fn(async () => undefined),
 }))
 
 jest.mock("../../providers/pay/core/pay-client", () => ({
@@ -61,7 +66,13 @@ function makeOrder(overrides: Record<string, any> = {}) {
   }
 }
 
-function makeContainer(order: Record<string, any> | undefined) {
+function makeContainer(
+  order: Record<string, any> | undefined,
+  {
+    testMode,
+    sessionOrderDisplayId,
+  }: {testMode?: boolean; sessionOrderDisplayId?: string} = {}
+) {
   const run = jest.fn(async () => undefined)
   ;(capturePaymentWorkflow as unknown as jest.Mock).mockReturnValue({run})
 
@@ -79,13 +90,38 @@ function makeContainer(order: Record<string, any> | undefined) {
   const registry: Record<string | symbol, any> = {
     logger,
     [ContainerRegistrationKeys.QUERY]: {
-      graph: jest.fn(async () => ({data: order ? [order] : []})),
+      graph: jest.fn(async ({entity}: {entity: string}) => {
+        if (entity === "payment_session") {
+          return {
+            data: sessionOrderDisplayId
+              ? [
+                  {
+                    id: "payses_1",
+                    payment_collection: {
+                      order: {display_id: sessionOrderDisplayId},
+                    },
+                  },
+                ]
+              : [],
+          }
+        }
+
+        return {data: order ? [order] : []}
+      }),
     },
     [ContainerRegistrationKeys.CONFIG_MODULE]: {
       modules: {
         payment: {
           options: {
-            providers: [{id: "pay", options: {slCode: "SL-TEST-0001"}}],
+            providers: [
+              {
+                id: "pay",
+                options: {
+                  slCode: "SL-TEST-0001",
+                  ...(testMode === undefined ? {} : {testMode}),
+                },
+              },
+            ],
           },
         },
       },
@@ -164,7 +200,7 @@ describe("direct-debit-exchange subscriber", () => {
     expect(run).not.toHaveBeenCalled()
   })
 
-  it("marks the collection failed on a storno, even when captured", async () => {
+  it("reverses the captured payment on a storno so the order becomes payable again", async () => {
     const order = makeOrder({status: PaymentCollectionStatus.COMPLETED})
     order.payment_collections[0].payment_sessions[0].payment.captured_at =
       "2026-07-01T10:00:00Z" as any
@@ -178,9 +214,14 @@ describe("direct-debit-exchange subscriber", () => {
       mandateId: MANDATE_CODE,
     })
 
-    expect(updatePaymentCollections).toHaveBeenCalledWith("paycol_1", {
-      status: PaymentCollectionStatus.FAILED,
+    expect(reverseCapturedPayment).toHaveBeenCalledWith(container, {
+      orderId: "order_1",
+      paymentId: "pay_1",
+      paymentCollectionId: "paycol_1",
+      reason: "Pay. direct debit storno (status 127)",
     })
+    // The reversal marks the collection failed itself
+    expect(updatePaymentCollections).not.toHaveBeenCalled()
     expect(emit).toHaveBeenCalledWith(
       {
         name: "pay_payment.failed",
@@ -203,6 +244,7 @@ describe("direct-debit-exchange subscriber", () => {
       mandateId: MANDATE_CODE,
     })
 
+    expect(reverseCapturedPayment).not.toHaveBeenCalled()
     expect(updatePaymentCollections).toHaveBeenCalledWith("paycol_1", {
       status: PaymentCollectionStatus.FAILED,
     })
@@ -296,5 +338,132 @@ describe("direct-debit-exchange subscriber", () => {
     expect(run).not.toHaveBeenCalled()
     expect(updatePaymentCollections).not.toHaveBeenCalled()
     expect(logger.warn).toHaveBeenCalled()
+  })
+})
+
+describe("direct-debit-exchange subscriber - simulated mandates in test mode", () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  const SIMULATED_CODE = "TEST-payses_1"
+
+  function makeSimulatedOrder(overrides: Record<string, any> = {}) {
+    const order = makeOrder(overrides)
+    order.payment_collections[0].payment_sessions[0].data = {
+      code: SIMULATED_CODE,
+      testMode: true,
+    } as any
+    return order
+  }
+
+  it("captures a simulated collection without contacting Pay.", async () => {
+    const {container, run, getDirectDebitInfoByMandate, getDirectDebitInfo} =
+      makeContainer(makeSimulatedOrder(), {sessionOrderDisplayId: "1001"})
+
+    await runHandler(container, {
+      action: "incassocollected",
+      mandateId: SIMULATED_CODE,
+    })
+
+    expect(getDirectDebitInfo).not.toHaveBeenCalled()
+    expect(getDirectDebitInfoByMandate).not.toHaveBeenCalled()
+    expect(run).toHaveBeenCalledWith({input: {payment_id: "pay_1"}})
+  })
+
+  it("reverses a captured simulated payment on a storno", async () => {
+    const order = makeSimulatedOrder({status: PaymentCollectionStatus.COMPLETED})
+    order.payment_collections[0].payment_sessions[0].payment.captured_at =
+      "2026-07-01T10:00:00Z" as any
+    const {container, emit, getDirectDebitInfoByMandate} = makeContainer(order, {
+      sessionOrderDisplayId: "1001",
+    })
+
+    await runHandler(container, {
+      action: "incassostorno",
+      mandateId: SIMULATED_CODE,
+    })
+
+    expect(getDirectDebitInfoByMandate).not.toHaveBeenCalled()
+    expect(reverseCapturedPayment).toHaveBeenCalledWith(container, {
+      orderId: "order_1",
+      paymentId: "pay_1",
+      paymentCollectionId: "paycol_1",
+      reason: "Pay. direct debit storno (status 127)",
+    })
+    expect(emit).toHaveBeenCalledWith(
+      {name: "pay_payment.failed", data: {id: "1001", statusCode: 127}},
+      {}
+    )
+  })
+
+  it("takes the order reference from the body when given", async () => {
+    const {container, run} = makeContainer(makeSimulatedOrder())
+
+    await runHandler(container, {
+      action: "incassocollected",
+      mandateId: SIMULATED_CODE,
+      reference: "1001",
+    })
+
+    expect(run).toHaveBeenCalledWith({input: {payment_id: "pay_1"}})
+  })
+
+  it("honours an explicit status code in the body", async () => {
+    const {container, updatePaymentCollections} = makeContainer(
+      makeSimulatedOrder(),
+      {sessionOrderDisplayId: "1001"}
+    )
+
+    await runHandler(container, {
+      action: "incassosend",
+      mandateId: SIMULATED_CODE,
+      status: {code: 106},
+    })
+
+    expect(updatePaymentCollections).toHaveBeenCalledWith("paycol_1", {
+      status: PaymentCollectionStatus.FAILED,
+    })
+  })
+
+  it("ignores a simulated mandate that belongs to another order", async () => {
+    const order = makeSimulatedOrder()
+    order.payment_collections[0].payment_sessions[0].data = {
+      code: "TEST-payses_other",
+      testMode: true,
+    } as any
+    const {container, run, updatePaymentCollections, logger} = makeContainer(
+      order,
+      {sessionOrderDisplayId: "1001"}
+    )
+
+    await runHandler(container, {
+      action: "incassocollected",
+      mandateId: SIMULATED_CODE,
+    })
+
+    expect(run).not.toHaveBeenCalled()
+    expect(updatePaymentCollections).not.toHaveBeenCalled()
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("does not belong to this order")
+    )
+  })
+
+  it("does not simulate when test mode is off", async () => {
+    const {container, run, getDirectDebitInfoByMandate, logger} = makeContainer(
+      makeSimulatedOrder(),
+      {testMode: false, sessionOrderDisplayId: "1001"}
+    )
+    getDirectDebitInfoByMandate.mockResolvedValue({directdebits: []})
+
+    await runHandler(container, {
+      action: "incassocollected",
+      mandateId: SIMULATED_CODE,
+    })
+
+    // Treated like any real mandate: re-fetched from Pay., which knows nothing about it
+    expect(getDirectDebitInfoByMandate).toHaveBeenCalledWith(SIMULATED_CODE)
+    expect(run).not.toHaveBeenCalled()
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("direct debit not found")
+    )
   })
 })

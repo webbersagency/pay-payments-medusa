@@ -168,7 +168,6 @@ describe("PayDirectDebitService.createPayOrderPayload", () => {
 describe("PayDirectDebitService.updatePayment", () => {
   it("creates the mandate and stores the response without the payload", async () => {
     const {service, createDirectDebit} = makeService()
-    ;(service as any).options_.directDebitApiVersion = "v2"
     const response = {code: MANDATE_CODE, reference: "1001"}
     createDirectDebit.mockResolvedValue(response)
 
@@ -198,7 +197,6 @@ describe("PayDirectDebitService.updatePayment", () => {
 
   it("stores a simulated mandate when test mode skips the mandate creation", async () => {
     const {service, createDirectDebit} = makeService()
-    ;(service as any).options_.directDebitApiVersion = "v2"
     createDirectDebit.mockResolvedValue(undefined)
 
     const result = await service.updatePayment({
@@ -345,6 +343,82 @@ describe("PayDirectDebitService.refundPayment", () => {
     } as any)
 
     expect(getDirectDebitInfoByMandate).toHaveBeenCalledWith(MANDATE_CODE)
+    expect(refundPayment).toHaveBeenCalledWith(PAY_TRANSACTION_ID, {
+      amount: {value: 1000, currency: "EUR"},
+    })
+  })
+
+  it("records the refund without contacting Pay. when the direct debit was stornoed", async () => {
+    const {service, logger, refundPayment, getTransaction, getDirectDebitInfoByMandate} =
+      makeService()
+    getDirectDebitInfoByMandate.mockResolvedValue(directDebitInfo(127))
+    const data = {
+      code: MANDATE_CODE,
+      orderId: PAY_TRANSACTION_ID,
+      amount: {value: 4050, currency: "EUR"},
+    }
+
+    const result = await service.refundPayment({amount: 40.5, data} as any)
+
+    expect(getDirectDebitInfoByMandate).toHaveBeenCalledWith(MANDATE_CODE)
+    expect(getTransaction).not.toHaveBeenCalled()
+    expect(refundPayment).not.toHaveBeenCalled()
+    expect(result.data).toEqual(data)
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("was reversed (status 127)")
+    )
+  })
+
+  it("records the refund without contacting Pay. when the direct debit was declined", async () => {
+    const {service, refundPayment, getDirectDebitInfoByMandate} = makeService()
+    getDirectDebitInfoByMandate.mockResolvedValue(
+      directDebitInfo(94, {declined: true})
+    )
+
+    await service.refundPayment({
+      amount: 40.5,
+      data: {code: MANDATE_CODE},
+    } as any)
+
+    expect(refundPayment).not.toHaveBeenCalled()
+  })
+
+  it("records the refund without contacting Pay. when the transaction was charged back", async () => {
+    const {service, refundPayment, getTransaction} = makeService()
+    getTransaction.mockResolvedValue({status: {code: -71, action: "CHARGEBACK"}})
+
+    const result = await service.refundPayment({
+      amount: 10,
+      data: {
+        orderId: PAY_TRANSACTION_ID,
+        amount: {value: 4050, currency: "EUR"},
+      },
+    } as any)
+
+    expect(getTransaction).toHaveBeenCalledWith(PAY_TRANSACTION_ID)
+    expect(refundPayment).not.toHaveBeenCalled()
+    expect(result.data).toEqual({
+      orderId: PAY_TRANSACTION_ID,
+      amount: {value: 4050, currency: "EUR"},
+    })
+  })
+
+  it("still refunds when the chargeback check itself fails", async () => {
+    const {service, logger, refundPayment, getTransaction} = makeService()
+    getTransaction.mockRejectedValue(new Error("timeout"))
+    refundPayment.mockResolvedValue({})
+
+    await service.refundPayment({
+      amount: 10,
+      data: {
+        orderId: PAY_TRANSACTION_ID,
+        amount: {value: 4050, currency: "EUR"},
+      },
+    } as any)
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Could not verify whether Pay. payment")
+    )
     expect(refundPayment).toHaveBeenCalledWith(PAY_TRANSACTION_ID, {
       amount: {value: 1000, currency: "EUR"},
     })
@@ -551,7 +625,7 @@ describe("PayDirectDebitService session data fallback", () => {
   })
 })
 
-describe("PayDirectDebitService v3 fallback", () => {
+describe("PayDirectDebitService v3 opt-in", () => {
   const PAYLOAD = {
     reference: "1001",
     description: "Shop - #1001",
@@ -564,8 +638,9 @@ describe("PayDirectDebitService v3 fallback", () => {
     },
   }
 
-  it("creates the direct debit through the v3 API by default and stores the v2 mandate shape", async () => {
+  it("creates the direct debit through the v3 API when directDebitApiVersion is v3 and stores the v2 mandate shape", async () => {
     const {service, createDirectDebit, createDirectDebitV3} = makeService()
+    ;(service as any).options_.directDebitApiVersion = "v3"
     createDirectDebitV3.mockResolvedValue({
       request: {result: "1", errorId: "", errorMessage: ""},
       result: MANDATE_CODE,
@@ -596,6 +671,7 @@ describe("PayDirectDebitService v3 fallback", () => {
 
   it("stores the simulated mandate when v3 test mode skips creation", async () => {
     const {service, createDirectDebitV3} = makeService()
+    ;(service as any).options_.directDebitApiVersion = "v3"
     createDirectDebitV3.mockResolvedValue(undefined)
 
     const result = await service.updatePayment({
@@ -606,9 +682,8 @@ describe("PayDirectDebitService v3 fallback", () => {
     expect((result.data as any).testMode).toBe(true)
   })
 
-  it("uses the v2 mandate API when directDebitApiVersion is v2", async () => {
+  it("uses the v2 mandate API by default", async () => {
     const {service, createDirectDebit, createDirectDebitV3} = makeService()
-    ;(service as any).options_.directDebitApiVersion = "v2"
     createDirectDebit.mockResolvedValue({code: MANDATE_CODE})
 
     await service.updatePayment({

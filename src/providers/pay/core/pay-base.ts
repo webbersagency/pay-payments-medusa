@@ -447,6 +447,18 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         )
       }
 
+      if (await this.isPaymentChargedBack(id)) {
+        // Pay. already returned the money, the refund only needs to be
+        // recorded on the Medusa side (see reverseCapturedPayment)
+        this.logger_.info(
+          `Pay. payment ${id} was charged back, recording the refund without contacting Pay.`
+        )
+
+        return {
+          data: orderData as unknown as Record<string, unknown>,
+        }
+      }
+
       const amount_ = Math.round(
         new BigNumber(MathBN.mult(amount, 100)).numeric
       )
@@ -672,6 +684,24 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       [this.options_.atCode]: this.options_.apiToken,
       [this.options_.slCode]: this.options_.slSecret,
       ...(this.options_.otherSlCodes ? this.options_.otherSlCodes : {}),
+    }
+  }
+
+  /**
+   * Whether Pay. reversed this transaction (chargeback). Such a payment can
+   * not be refunded again, the money is already with the customer.
+   * @param transactionId - The Pay. transaction id
+   */
+  protected async isPaymentChargedBack(transactionId: string): Promise<boolean> {
+    try {
+      const live = await this.client_.getTransaction(transactionId)
+
+      return live?.status?.code === PayPaymentStatus.CHARGEBACK
+    } catch (error) {
+      this.logger_.warn(
+        `Could not verify whether Pay. payment ${transactionId} was charged back: ${error.message}`
+      )
+      return false
     }
   }
 

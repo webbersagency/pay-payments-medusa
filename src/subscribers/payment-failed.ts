@@ -8,6 +8,7 @@ import {
 } from "@medusajs/framework/utils"
 import {IPaymentModuleService} from "@medusajs/types"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
+import {reverseCapturedPayment} from "../utils/reverseCapturedPayment"
 import {PayPaymentStatus} from "../providers/pay/core/constants"
 
 export default async function payPaymentFailedHandler({
@@ -32,6 +33,8 @@ export default async function payPaymentFailedHandler({
         "payment_collections.*",
         "payment_collections.payments.captured_at",
         "payment_collections.payment_sessions.*",
+        "payment_collections.payment_sessions.payment.id",
+        "payment_collections.payment_sessions.payment.captured_at",
       ],
       filters: {
         display_id: data.id,
@@ -62,14 +65,33 @@ export default async function payPaymentFailedHandler({
 
     const payPaymentSession = getPayPaymentSession(order)
 
-    if (payPaymentSession) {
-      await paymentModuleService.updatePaymentCollections(
-        payPaymentSession.payment_collection_id as string,
-        {
-          status: PaymentCollectionStatus.FAILED,
-        }
+    if (!payPaymentSession) {
+      logger.warn(
+        `No Pay. payment session found for order ${order.id}, ignoring failed payment`
       )
+      return
     }
+
+    const paymentCollectionId =
+      payPaymentSession.payment_collection_id as string
+    const capturedPayment = payPaymentSession.payment?.captured_at
+      ? payPaymentSession.payment
+      : undefined
+
+    if (data.statusCode === PayPaymentStatus.CHARGEBACK && capturedPayment) {
+      // The money went back to the customer, make the order payable again
+      await reverseCapturedPayment(container, {
+        orderId: order.id,
+        paymentId: capturedPayment.id,
+        paymentCollectionId,
+        reason: `Pay. chargeback (status ${data.statusCode})`,
+      })
+      return
+    }
+
+    await paymentModuleService.updatePaymentCollections(paymentCollectionId, {
+      status: PaymentCollectionStatus.FAILED,
+    })
   } catch (e) {
     logger.error(e)
     throw e

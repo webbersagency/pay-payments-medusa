@@ -143,3 +143,69 @@ export function normalizeDirectDebitStatusAction(
 
   return payloadAction.replace(/^incasso/, "")
 }
+
+/**
+ * Mandates created while the provider runs in test mode are not known at
+ * Pay. (see PayDirectDebitService.updatePayment), their code is
+ * `TEST-<payment session id>`.
+ */
+export const SIMULATED_MANDATE_PREFIX = "TEST-"
+
+export function isSimulatedDirectDebitMandate(code: unknown): code is string {
+  return typeof code === "string" && code.startsWith(SIMULATED_MANDATE_PREFIX)
+}
+
+export function readSimulatedMandateSessionId(code: string): string | null {
+  return readPayloadString(code.slice(SIMULATED_MANDATE_PREFIX.length))
+}
+
+const LEGACY_ACTION_STATUS_CODES: Record<string, number> = {
+  incassopending: PayDirectDebitStatusCode.PENDING,
+  incassosend: PayDirectDebitStatusCode.SENT,
+  incassocollected: PayDirectDebitStatusCode.COLLECTED,
+  incassostorno: PayDirectDebitStatusCode.STORNO,
+}
+
+/**
+ * Builds the direct debit a simulated exchange describes, so a test server can
+ * walk through the collection flow (collected, storno, ...) without Pay. The
+ * status comes from `status.code` in the body when present, otherwise from the
+ * legacy action. Only used for simulated mandates while test mode is active.
+ */
+export function buildSimulatedDirectDebit(
+  payload: Record<string, any>,
+  mandateId: string,
+  reference: string
+): DirectDebit {
+  const action = normalizeAction(payload.action)
+  const bodyCode = payload.status?.code ?? payload.statusCode
+  const code =
+    bodyCode !== undefined && bodyCode !== null && bodyCode !== ""
+      ? Number(bodyCode)
+      : LEGACY_ACTION_STATUS_CODES[action] ?? NaN
+
+  return {
+    id: mandateId,
+    description: `Simulated direct debit exchange for #${reference}`,
+    url: "",
+    processDate: new Date().toISOString(),
+    orderId: "",
+    paymentSessionId: readSimulatedMandateSessionId(mandateId) ?? "",
+    type: "SINGLE",
+    amount: {
+      value: Number(payload.amount?.value ?? 0),
+      currency: String(payload.amount?.currency ?? ""),
+    },
+    status: {
+      code,
+      action:
+        readPayloadString(payload.status?.action) ??
+        action.replace(/^incasso/, ""),
+      phase: "",
+    },
+    declined: payload.declined === true,
+    decline: null,
+    bankAccount: {iban: "", bic: "", owner: ""},
+    mandate: {code: mandateId, reference, description: ""},
+  } as DirectDebit
+}

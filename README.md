@@ -242,6 +242,49 @@ dropdown.
 
 Make sure that the selected payment methods are enabled in your Pay origanization settings as well.
 
+### Testing direct debits locally
+
+Pay.'s test environment does not process SEPA direct debits. With `testMode` enabled the plugin therefore does not
+create a mandate at Pay. when a direct debit order is placed. It stores a simulated mandate on the payment session
+instead (code `TEST-<payment session id>`, logged as `Pay. direct debit test mode: storing simulated mandate ...`), and
+the collection flow can be driven by posting the exchanges Pay. would normally send to the webhook route yourself.
+Exchanges for a simulated mandate are not re-fetched from Pay., the body is taken as the direct debit state. This only
+happens while `testMode` is on and only for mandates that were created in test mode.
+
+```bash
+# 1. Place an order with SEPA Direct Debit, the payment collection is now "awaiting".
+#    Copy the simulated mandate code from the server log.
+MANDATE="TEST-payses_01JXXXXXXXXXXXXXXXXXXXXXXX"
+
+# 2. The bank collected the money: the payment is captured and the order is paid.
+curl -X POST http://localhost:9000/hooks/pay/pay-direct-debit_pay \
+  -H "Content-Type: application/json" \
+  -d "{\"action\":\"incassocollected\",\"mandateId\":\"$MANDATE\"}"
+
+# 3. The customer reversed the debit (storno): the payment is refunded in Medusa only, the order
+#    shows the outstanding amount again and the admin offers "Copy payment link" / "Mark as paid".
+curl -X POST http://localhost:9000/hooks/pay/pay-direct-debit_pay \
+  -H "Content-Type: application/json" \
+  -d "{\"action\":\"incassostorno\",\"mandateId\":\"$MANDATE\"}"
+```
+
+Other legacy actions (`incassopending`, `incassosend`) and an explicit `status: {"code": 106}` (failed) or
+`declined: true` work the same way. Add `"reference": "<order display id>"` to the body when the order can not be
+resolved from the mandate code. The webhook route processes exchanges asynchronously (5 seconds by default), so give
+the server a moment before checking the order. The payment link opens the regular Pay. hosted checkout, so the
+outstanding amount can be paid with any test payment method.
+
+#### Simulator widget in the admin
+
+The same exchanges can be triggered from the order detail page. Switch on **SEPA testing** in Settings > Pay (off by
+default, meant for staging servers) and a "Pay. direct debit simulator" panel appears in the sidebar of orders that hold
+a simulated mandate, with a button per exchange (pending, sent, collected, storno, failed, declined). The exchanges are
+processed synchronously, so the order refreshes right away. The switch is stored in the store's metadata
+(`pay_sepa_testing`), so it applies to every admin user of that server. The panel is backed by
+`GET /admin/pay/orders/:id/direct-debit` and `POST /admin/pay/orders/:id/direct-debit/exchange` (`{"action": "storno"}`),
+which only work while the switch and `testMode` are on; the switch itself is read and written through
+`GET`/`POST /admin/pay/settings` (`{"sepaTesting": true}`).
+
 ## Supported Payment Methods
 
 The plugin currently supports the following Pay payment methods:

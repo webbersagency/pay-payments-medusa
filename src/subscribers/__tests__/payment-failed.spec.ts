@@ -4,7 +4,12 @@ import {
   PaymentCollectionStatus,
 } from "@medusajs/framework/utils"
 import {PayPaymentStatus} from "../../providers/pay/core/constants"
+import {reverseCapturedPayment} from "../../utils/reverseCapturedPayment"
 import paymentFailedHandler from "../payment-failed"
+
+jest.mock("../../utils/reverseCapturedPayment", () => ({
+  reverseCapturedPayment: jest.fn(async () => undefined),
+}))
 
 function makeContainer(order: Record<string, any> | undefined) {
   const updatePaymentCollections = jest.fn(async () => undefined)
@@ -77,7 +82,37 @@ describe("payment-failed subscriber", () => {
     expect(updatePaymentCollections).not.toHaveBeenCalled()
   })
 
-  it("marks a captured collection failed on a chargeback", async () => {
+  it("reverses the captured payment on a chargeback so the order becomes payable again", async () => {
+    const {container, updatePaymentCollections} = makeContainer({
+      id: "order_1",
+      payment_collections: [
+        {
+          status: PaymentCollectionStatus.COMPLETED,
+          payments: [{captured_at: "2026-07-02T19:36:00Z"}],
+          payment_sessions: [
+            {
+              provider_id: "pp_pay-direct-debit_pay",
+              payment_collection_id: "paycol_1",
+              payment: {id: "pay_1", captured_at: "2026-07-02T19:36:00Z"},
+            },
+          ],
+        },
+      ],
+    })
+
+    await runHandler(container, PayPaymentStatus.CHARGEBACK)
+
+    expect(reverseCapturedPayment).toHaveBeenCalledWith(container, {
+      orderId: "order_1",
+      paymentId: "pay_1",
+      paymentCollectionId: "paycol_1",
+      reason: `Pay. chargeback (status ${PayPaymentStatus.CHARGEBACK})`,
+    })
+    // The reversal marks the collection failed itself
+    expect(updatePaymentCollections).not.toHaveBeenCalled()
+  })
+
+  it("falls back to failing the collection on a chargeback when the Pay. session holds no captured payment", async () => {
     const {container, updatePaymentCollections} = makeContainer({
       id: "order_1",
       payment_collections: [
@@ -96,6 +131,7 @@ describe("payment-failed subscriber", () => {
 
     await runHandler(container, PayPaymentStatus.CHARGEBACK)
 
+    expect(reverseCapturedPayment).not.toHaveBeenCalled()
     expect(updatePaymentCollections).toHaveBeenCalledWith("paycol_1", {
       status: PaymentCollectionStatus.FAILED,
     })

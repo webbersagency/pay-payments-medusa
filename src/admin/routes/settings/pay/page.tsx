@@ -4,6 +4,7 @@ import {
   createDataTableColumnHelper,
   DataTable,
   Heading,
+  Switch,
   Text,
   toast,
   useDataTable,
@@ -11,7 +12,7 @@ import {
 import {defineRouteConfig} from "@medusajs/admin-sdk"
 import PayLogo from "../../../shared/icons/pay-logo.tsx"
 import {sdk} from "../../../lib/sdk.ts"
-import {useQuery} from "@tanstack/react-query"
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query"
 import {displayName, version} from "../../../../../package.json"
 import {useMemo} from "react"
 import {GetConfigResponse} from "../../../../providers/pay/types"
@@ -28,6 +29,13 @@ const formatter = new Intl.NumberFormat([], {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
 })
+
+type PayAdminSettings = {
+  testMode: boolean
+  sepaTesting: boolean
+}
+
+const SETTINGS_QUERY_KEY = ["pay-settings"]
 
 const columnHelper = createDataTableColumnHelper<PaymentMethod>()
 
@@ -51,6 +59,33 @@ const columns = [
 ]
 
 const PaySettingPage = () => {
+  const queryClient = useQueryClient()
+
+  const {data: settings, isLoading: isLoadingSettings} =
+    useQuery<PayAdminSettings>({
+      queryFn: () => sdk.client.fetch("/admin/pay/settings"),
+      queryKey: SETTINGS_QUERY_KEY,
+    })
+
+  const updateSepaTesting = useMutation({
+    mutationFn: (sepaTesting: boolean) =>
+      sdk.client.fetch<PayAdminSettings>("/admin/pay/settings", {
+        method: "POST",
+        body: {sepaTesting},
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(SETTINGS_QUERY_KEY, updated)
+      toast.success("Success", {
+        description: updated.sepaTesting
+          ? "SEPA testing enabled, the simulator is shown on direct debit orders"
+          : "SEPA testing disabled",
+      })
+    },
+    onError: (error: Error) => {
+      toast.error("Error", {description: error.message})
+    },
+  })
+
   const {data: config, refetch: refetchConfig} = useQuery<
     Pick<
       GetConfigResponse,
@@ -151,6 +186,33 @@ const PaySettingPage = () => {
               Clear Cache
             </Button>
           </Text>
+        </div>
+        <div className="text-ui-fg-subtle grid grid-cols-2 items-center px-6 py-4">
+          <div className="flex flex-col gap-y-1">
+            <Text size="small" leading="compact" weight="plus">
+              SEPA testing
+            </Text>
+            <Text size="small" leading="compact">
+              Pay. cannot process direct debits in its test environment. When
+              enabled, direct debit orders get a simulator that walks the
+              payment through the exchanges Pay. would send (collected,
+              storno, ...). Meant for staging servers only.
+              {settings && !settings.testMode
+                ? " The provider is not in test mode, so the simulator stays hidden."
+                : ""}
+            </Text>
+          </div>
+          <div className="flex items-center gap-x-3">
+            <Switch
+              id="pay-sepa-testing"
+              checked={settings?.sepaTesting ?? false}
+              disabled={isLoadingSettings || updateSepaTesting.isPending}
+              onCheckedChange={(checked) => updateSepaTesting.mutate(checked)}
+            />
+            <Text size="small" leading="compact">
+              {settings?.sepaTesting ? "Enabled" : "Disabled"}
+            </Text>
+          </div>
         </div>
       </Container>
       <Container className="divide-y p-0 overflow-hidden">

@@ -125,9 +125,9 @@ class PayDirectDebitService extends PayBase {
 
     try {
       const response =
-        this.options_.directDebitApiVersion === "v2"
-          ? await this.client_.createDirectDebit(payload)
-          : await this.createDirectDebitViaV3(payload)
+        this.options_.directDebitApiVersion === "v3"
+          ? await this.createDirectDebitViaV3(payload)
+          : await this.client_.createDirectDebit(payload)
 
       if (!response) {
         // Test mode does not create a mandate at Pay., store a clearly marked
@@ -307,23 +307,34 @@ class PayDirectDebitService extends PayBase {
 
     let directDebit: DirectDebit | undefined = data.directdebits?.[0]
     let orderId: string | undefined = data.orderId ?? directDebit?.orderId
+    const mandateId = this.readMandateId(data)
 
-    if (!orderId) {
-      const mandateId = this.readMandateId(data)
+    // The stored direct debit is a snapshot from the capture, the live state
+    // decides whether the collection was reversed in the meantime
+    if (mandateId) {
+      try {
+        const info = await this.client_.getDirectDebitInfoByMandate(mandateId)
+        const live = info?.directdebits?.[0]
 
-      if (mandateId) {
-        const info = await this.client_
-          .getDirectDebitInfoByMandate(mandateId)
-          .catch((error) => {
-            this.logger_.warn(
-              `Could not retrieve direct debit mandate ${mandateId}: ${error.message}`
-            )
-            return undefined
-          })
-
-        directDebit = info?.directdebits[0]
-        orderId = directDebit?.orderId
+        if (live) {
+          directDebit = live
+          orderId = orderId ?? live.orderId
+        }
+      } catch (error) {
+        this.logger_.warn(
+          `Could not retrieve direct debit mandate ${mandateId}: ${error.message}`
+        )
       }
+    }
+
+    if (directDebit && this.isDirectDebitReversed(directDebit)) {
+      // The bank returned the money (storno / failed collection), the refund
+      // only needs to be recorded on the Medusa side (see reverseCapturedPayment)
+      this.logger_.info(
+        `Pay. direct debit ${directDebit.id} was reversed (status ${directDebit.status?.code}), recording the refund without contacting Pay.`
+      )
+
+      return {data}
     }
 
     if (!orderId) {
@@ -376,6 +387,20 @@ class PayDirectDebitService extends PayBase {
       amount: payload.amount,
       apiVersion: "v3",
     }
+  }
+
+  /**
+   * A storno, a failed collection or a declined debit means the money never
+   * stayed with (or went back to) the merchant.
+   */
+  protected isDirectDebitReversed(directDebit: DirectDebit): boolean {
+    const code = Number(directDebit.status?.code)
+
+    return (
+      directDebit.declined === true ||
+      code === PayDirectDebitStatusCode.STORNO ||
+      code === PayDirectDebitStatusCode.FAILED
+    )
   }
 
   protected readMandateId(data: Record<string, any>): string | undefined {
