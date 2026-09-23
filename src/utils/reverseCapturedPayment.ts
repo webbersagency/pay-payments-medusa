@@ -14,12 +14,56 @@ import {
   MedusaContainer,
 } from "@medusajs/types"
 
+export type PaymentReversalKind = "chargeback" | "storno" | "failure"
+
 export type ReverseCapturedPaymentInput = {
   orderId: string
   paymentId: string
   paymentCollectionId: string
-  /** Stored as the refund note, e.g. "Pay. chargeback (status -71)" */
-  reason: string
+  /** What reversed the payment, becomes the refund note */
+  kind: PaymentReversalKind
+  /** The Pay. status code that reported it, when known */
+  statusCode?: number | string
+}
+
+const REVERSAL_NOTE_PATTERN =
+  /^Pay\. (chargeback|direct debit (?:storno|failure)) \(status (-?\d+|unknown)\)$/
+
+/**
+ * The refund note that marks a reversal, e.g. "Pay. chargeback (status -71)"
+ * or "Pay. direct debit storno (status 127)". Medusa 2.11 refunds carry no
+ * metadata, so the note is what the admin banner recognises a reversal by.
+ */
+export function formatPayReversalNote(
+  kind: PaymentReversalKind,
+  statusCode?: number | string
+): string {
+  const what = kind === "chargeback" ? "chargeback" : `direct debit ${kind}`
+  const status =
+    statusCode === undefined || statusCode === null || statusCode === ""
+      ? "unknown"
+      : String(statusCode)
+
+  return `Pay. ${what} (status ${status})`
+}
+
+export function parsePayReversalNote(
+  note: unknown
+): {kind: PaymentReversalKind; statusCode: number | null} | null {
+  if (typeof note !== "string") {
+    return null
+  }
+
+  const match = note.trim().match(REVERSAL_NOTE_PATTERN)
+
+  if (!match) {
+    return null
+  }
+
+  const kind = match[1].replace("direct debit ", "") as PaymentReversalKind
+  const statusCode = match[2] === "unknown" ? null : Number(match[2])
+
+  return {kind, statusCode}
 }
 
 const sumAmounts = (items: {amount: BigNumberValue}[] | undefined) =>
@@ -68,17 +112,19 @@ export async function reverseCapturedPayment(
     sumAmounts(payment.refunds)
   )
 
+  const note = formatPayReversalNote(input.kind, input.statusCode)
+
   if (MathBN.gt(outstanding, 0)) {
     const amount = new BigNumber(outstanding).numeric
 
     payment = await paymentModuleService.refundPayment({
       payment_id: payment.id,
       amount,
-      note: input.reason,
+      note,
     })
 
     logger.info(
-      `Pay. - Recorded reversal of ${payment.currency_code} ${amount} on payment ${payment.id} for order ${input.orderId}: ${input.reason}`
+      `Pay. - Recorded reversal of ${payment.currency_code} ${amount} on payment ${payment.id} for order ${input.orderId}: ${note}`
     )
   } else {
     logger.info(

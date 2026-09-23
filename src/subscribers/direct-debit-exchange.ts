@@ -353,12 +353,12 @@ export default async function payDirectDebitExchangeHandler({
         orderId: order.id,
         paymentId: payment.id,
         paymentCollectionId,
-        reason: `Pay. direct debit ${
+        kind:
           statusCode === PayDirectDebitStatusCode.STORNO ||
           statusAction === "storno"
             ? "storno"
-            : "failure"
-        } (status ${statusLabel})`,
+            : "failure",
+        statusCode: statusLabel,
       })
     } else {
       await paymentModuleService.updatePaymentCollections(

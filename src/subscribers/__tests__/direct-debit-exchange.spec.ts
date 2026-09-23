@@ -218,7 +218,8 @@ describe("direct-debit-exchange subscriber", () => {
       orderId: "order_1",
       paymentId: "pay_1",
       paymentCollectionId: "paycol_1",
-      reason: "Pay. direct debit storno (status 127)",
+      kind: "storno",
+      statusCode: 127,
     })
     // The reversal marks the collection failed itself
     expect(updatePaymentCollections).not.toHaveBeenCalled()
@@ -387,7 +388,8 @@ describe("direct-debit-exchange subscriber - simulated mandates in test mode", (
       orderId: "order_1",
       paymentId: "pay_1",
       paymentCollectionId: "paycol_1",
-      reason: "Pay. direct debit storno (status 127)",
+      kind: "storno",
+      statusCode: 127,
     })
     expect(emit).toHaveBeenCalledWith(
       {name: "pay_payment.failed", data: {id: "1001", statusCode: 127}},

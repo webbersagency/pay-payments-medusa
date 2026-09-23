@@ -106,7 +106,8 @@ describe("payment-failed subscriber", () => {
       orderId: "order_1",
       paymentId: "pay_1",
       paymentCollectionId: "paycol_1",
-      reason: `Pay. chargeback (status ${PayPaymentStatus.CHARGEBACK})`,
+      kind: "chargeback",
+      statusCode: PayPaymentStatus.CHARGEBACK,
     })
     // The reversal marks the collection failed itself
     expect(updatePaymentCollections).not.toHaveBeenCalled()

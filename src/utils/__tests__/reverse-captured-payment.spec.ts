@@ -4,7 +4,11 @@ import {
   PaymentCollectionStatus,
 } from "@medusajs/framework/utils"
 import {createOrUpdateOrderPaymentCollectionWorkflow} from "@medusajs/core-flows"
-import {reverseCapturedPayment} from "../reverseCapturedPayment"
+import {
+  formatPayReversalNote,
+  parsePayReversalNote,
+  reverseCapturedPayment,
+} from "../reverseCapturedPayment"
 
 jest.mock("@medusajs/core-flows", () => ({
   createOrUpdateOrderPaymentCollectionWorkflow: jest.fn(),
@@ -14,8 +18,41 @@ const INPUT = {
   orderId: "order_1",
   paymentId: "pay_1",
   paymentCollectionId: "paycol_1",
-  reason: "Pay. chargeback (status -71)",
+  kind: "chargeback" as const,
+  statusCode: -71,
 }
+
+describe("reversal notes", () => {
+  it("formats and parses a chargeback note", () => {
+    const note = formatPayReversalNote("chargeback", -71)
+
+    expect(note).toBe("Pay. chargeback (status -71)")
+    expect(parsePayReversalNote(note)).toEqual({
+      kind: "chargeback",
+      statusCode: -71,
+    })
+  })
+
+  it("formats and parses direct debit notes, also without a status", () => {
+    expect(parsePayReversalNote(formatPayReversalNote("storno", 127))).toEqual({
+      kind: "storno",
+      statusCode: 127,
+    })
+    expect(parsePayReversalNote(formatPayReversalNote("failure", "unknown"))).toEqual({
+      kind: "failure",
+      statusCode: null,
+    })
+    expect(formatPayReversalNote("failure")).toBe(
+      "Pay. direct debit failure (status unknown)"
+    )
+  })
+
+  it("does not mistake other refund notes for reversals", () => {
+    expect(parsePayReversalNote("Customer asked for a refund")).toBeNull()
+    expect(parsePayReversalNote("Pay. refund (status -81)")).toBeNull()
+    expect(parsePayReversalNote(null)).toBeNull()
+  })
+})
 
 function makeContainer({
   payment,

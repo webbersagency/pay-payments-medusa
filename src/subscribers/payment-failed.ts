@@ -84,7 +84,8 @@ export default async function payPaymentFailedHandler({
         orderId: order.id,
         paymentId: capturedPayment.id,
         paymentCollectionId,
-        reason: `Pay. chargeback (status ${data.statusCode})`,
+        kind: "chargeback",
+        statusCode: data.statusCode,
       })
       return
     }

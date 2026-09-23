@@ -274,6 +274,14 @@ resolved from the mandate code. The webhook route processes exchanges asynchrono
 the server a moment before checking the order. The payment link opens the regular Pay. hosted checkout, so the
 outstanding amount can be paid with any test payment method.
 
+#### Reversed payments in the admin
+
+When a chargeback or storno reverses a captured payment, the plugin refunds the payment in Medusa (without contacting
+Pay.), books the amount as outstanding again and opens a new payment collection, so the order offers "Copy payment
+link" and "Mark as paid". Medusa's own payment status can only call that "Refunded", so the plugin adds a
+"Payment reversed, action required" banner on top of the order page that names the cause (chargeback, storno, failed
+collection), the amount that went back to the customer and what is still outstanding.
+
 #### Simulator widget in the admin
 
 The same exchanges can be triggered from the order detail page. Switch on **SEPA testing** in Settings > Pay (off by
