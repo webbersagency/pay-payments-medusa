@@ -9,17 +9,15 @@ import {capturePaymentWorkflow} from "@medusajs/core-flows"
 import {
   IEventBusModuleService,
   IPaymentModuleService,
-  Logger,
   MedusaContainer,
 } from "@medusajs/types"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
+import {getPayClient} from "../utils/getPayClient"
 import {reverseCapturedPayment} from "../utils/reverseCapturedPayment"
 import {
   DirectDebitInfoResponse,
   PaymentProviderKeys,
-  ProviderOptions,
 } from "../providers/pay/types"
-import {PayClient} from "../providers/pay/core/pay-client"
 import {DirectDebit} from "../providers/pay/types"
 import {PayDirectDebitStatusCode} from "../providers/pay/core/constants"
 import {
@@ -39,29 +37,6 @@ import {
   readSimulatedMandateSessionId,
   isSimulatedDirectDebitMandate,
 } from "../utils/directDebitExchange"
-
-const getPayClient = (
-  container: MedusaContainer,
-  logger: Logger
-): {client: PayClient; options: ProviderOptions} | null => {
-  const configModule = container.resolve(
-    ContainerRegistrationKeys.CONFIG_MODULE
-  )
-
-  const payModuleConfig = (configModule.modules?.payment as any)?.options
-    ?.providers?.find((p) => p.id === "pay")
-
-  if (!payModuleConfig?.options) {
-    logger.warn(
-      "Pay. - Ignoring direct debit exchange: no Pay. provider options found"
-    )
-    return null
-  }
-
-  const options = payModuleConfig.options as ProviderOptions
-
-  return {client: new PayClient(options, logger), options}
-}
 
 /**
  * The order display id a simulated exchange belongs to: the body's
@@ -120,6 +95,9 @@ export default async function payDirectDebitExchangeHandler({
   const pay = getPayClient(container, logger)
 
   if (!pay) {
+    logger.warn(
+      "Pay. - Ignoring direct debit exchange: no Pay. provider options found"
+    )
     return
   }
 

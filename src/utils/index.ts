@@ -1,3 +1,6 @@
 export * from "./createPayOrder"
 export * from "./reverseCapturedPayment"
 export * from "./paymentReversal"
+export * from "./getPayClient"
+export {PayClient} from "../providers/pay/core/pay-client"
+export {PayPaymentStatus} from "../providers/pay/core/constants"
