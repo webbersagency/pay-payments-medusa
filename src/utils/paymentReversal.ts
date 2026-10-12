@@ -15,7 +15,10 @@ export type PaymentReversal = {
   /** Total amount that went back to the customer */
   amount: number
   currency_code: string | null
-  /** What the customer still owes on the order */
+  /**
+   * What the customer still owes on the order, in whole cents. Zero or less
+   * (overpaid) means the reversal has been settled.
+   */
   outstanding: number
   /** Whether a not_paid payment collection exists to collect it with */
   payable: boolean
@@ -30,6 +33,14 @@ const toNumber = (value: unknown): number => {
 
   return Number.isFinite(numeric) ? numeric : 0
 }
+
+/**
+ * Medusa keeps order totals unrounded, while a payment through Pay. captures
+ * whole cents. Paying the reversal through the payment link can therefore
+ * leave a sub-cent pending difference, which must not read as still owed.
+ */
+const roundToCents = (amount: number): number =>
+  Math.round(amount * 100) / 100 || 0
 
 /**
  * Finds the reversal reverseCapturedPayment recorded on an order, recognised
@@ -85,7 +96,7 @@ export async function getPaymentReversal(
     )
 
   const summary = ((order as any).summary ?? {}) as Record<string, any>
-  const outstanding = toNumber(summary.pending_difference)
+  const outstanding = roundToCents(toNumber(summary.pending_difference))
   const payable = collections.some(
     (collection) => collection?.status === "not_paid"
   )

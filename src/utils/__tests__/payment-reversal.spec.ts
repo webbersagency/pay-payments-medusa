@@ -54,6 +54,66 @@ describe("getPaymentReversal", () => {
     })
   })
 
+  describe("once the reversal was paid again", () => {
+    const settledOrder = (pendingDifference: number | string) =>
+      makeContainer({
+        id: "order_1",
+        currency_code: "eur",
+        summary: {pending_difference: pendingDifference},
+        payment_collections: [
+          {
+            id: "paycol_1",
+            status: "failed",
+            payments: [
+              {
+                id: "pay_1",
+                refunds: [
+                  {
+                    id: "ref_1",
+                    amount: 30.5,
+                    note: "Pay. direct debit storno (status 127)",
+                    created_at: "2026-09-20T10:00:00Z",
+                  },
+                ],
+              },
+            ],
+          },
+          {id: "paycol_2", status: "completed", payments: [{id: "pay_2", refunds: []}]},
+        ],
+      })
+
+    it("reports nothing outstanding after an exact capture (mark as paid)", async () => {
+      expect(await getPaymentReversal(settledOrder(0), "order_1")).toMatchObject({
+        reversed: true,
+        kind: "storno",
+        amount: 30.5,
+        outstanding: 0,
+        payable: false,
+      })
+    })
+
+    it("ignores the sub-cent remainder a whole-cent Pay. capture leaves behind", async () => {
+      // Pay. charged 30.50 on a 30.5042 collection, or 30.50 on a 30.4958 one
+      const under = await getPaymentReversal(settledOrder("0.0042"), "order_1")
+      const over = await getPaymentReversal(settledOrder(-0.0042), "order_1")
+
+      expect(under!.outstanding).toBe(0)
+      expect(over!.outstanding).toBe(0)
+    })
+
+    it("keeps an overpayment negative, which still counts as settled", async () => {
+      expect(
+        (await getPaymentReversal(settledOrder(-5.25), "order_1"))!.outstanding
+      ).toBe(-5.25)
+    })
+
+    it("still reports a remainder of a cent or more as outstanding", async () => {
+      expect(
+        (await getPaymentReversal(settledOrder(0.01), "order_1"))!.outstanding
+      ).toBe(0.01)
+    })
+  })
+
   it("is not a reversal when the refunds are ordinary ones", async () => {
     const reversal = await getPaymentReversal(
       makeContainer({

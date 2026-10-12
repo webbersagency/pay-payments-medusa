@@ -280,7 +280,9 @@ When a chargeback or storno reverses a captured payment, the plugin refunds the 
 Pay.), books the amount as outstanding again and opens a new payment collection, so the order offers "Copy payment
 link" and "Mark as paid". Medusa's own payment status can only call that "Refunded", so the plugin adds a
 "Payment reversed, action required" banner on top of the order page that names the cause (chargeback, storno, failed
-collection), the amount that went back to the customer and what is still outstanding.
+collection), the amount that went back to the customer and what is still outstanding. Once the outstanding amount is
+paid (through the payment link or "Mark as paid") the banner turns green and reads "Storno paid", "Chargeback paid" or
+"Failed collection paid", keeping the reversal visible in the order's history.
 
 #### Simulator widget in the admin
 

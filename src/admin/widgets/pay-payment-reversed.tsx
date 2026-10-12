@@ -47,7 +47,9 @@ const formatDate = (iso: string | null) =>
 /**
  * Medusa can only describe a charged-back or stornoed payment as "refunded",
  * which reads as if the shop refunded the customer. This banner sits above
- * the order and says what actually happened and what is still owed.
+ * the order and says what actually happened and what is still owed. Once the
+ * customer paid the outstanding amount again it turns into a "<kind> paid"
+ * note, so the history stays visible without reading as an open problem.
  */
 const PayPaymentReversedWidget = ({
   data: order,
@@ -65,16 +67,16 @@ const PayPaymentReversedWidget = ({
   const when = formatDate(reversal.at)
   const returned = formatAmount(reversal.amount, reversal.currency_code)
   const outstanding = formatAmount(reversal.outstanding, reversal.currency_code)
-  const stillOwed = reversal.outstanding > 0
+  const settled = reversal.outstanding <= 0
 
   return (
-    <Alert variant="warning" className="items-start">
+    <Alert variant={settled ? "success" : "warning"} className="items-start">
       <div className="flex flex-col gap-y-2">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Text size="small" leading="compact" weight="plus">
-            Payment reversed, action required
+            {settled ? `${kindLabel} paid` : "Payment reversed, action required"}
           </Text>
-          <Badge size="2xsmall" color="orange">
+          <Badge size="2xsmall" color={settled ? "green" : "orange"}>
             {kindLabel}
           </Badge>
           {reversal.statusCode !== null && (
@@ -89,13 +91,13 @@ const PayPaymentReversedWidget = ({
             : reversal.kind === "storno"
               ? `The customer reversed the direct debit${when ? ` on ${when}` : ""}: ${returned} went back to them.`
               : `The bank did not collect the direct debit${when ? ` (${when})` : ""}: ${returned} was never received.`}{" "}
-          {stillOwed
-            ? `This order is not paid, ${outstanding} is still outstanding.${
+          {settled
+            ? "The outstanding amount has since been settled."
+            : `This order is not paid, ${outstanding} is still outstanding.${
                 reversal.payable
                   ? ' Use "Copy payment link" in the summary to let the customer pay again, or mark it as paid once the money arrived another way.'
                   : ""
-              }`
-            : "The outstanding amount has since been settled."}{" "}
+              }`}{" "}
           The "Refunded" payment status is Medusa's wording for the reversal,
           no refund was sent by the shop.
         </Text>
