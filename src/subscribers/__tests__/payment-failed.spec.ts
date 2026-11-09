@@ -3,6 +3,7 @@ import {
   Modules,
   PaymentCollectionStatus,
 } from "@medusajs/framework/utils"
+import {cancelOrderWorkflow} from "@medusajs/core-flows"
 import {PayPaymentStatus} from "../../providers/pay/core/constants"
 import {reverseCapturedPayment} from "../../utils/reverseCapturedPayment"
 import paymentFailedHandler from "../payment-failed"
@@ -11,7 +12,14 @@ jest.mock("../../utils/reverseCapturedPayment", () => ({
   reverseCapturedPayment: jest.fn(async () => undefined),
 }))
 
+jest.mock("@medusajs/core-flows", () => ({
+  cancelOrderWorkflow: jest.fn(),
+}))
+
 function makeContainer(order: Record<string, any> | undefined) {
+  const run = jest.fn(async () => undefined)
+  ;(cancelOrderWorkflow as unknown as jest.Mock).mockReturnValue({run})
+
   const updatePaymentCollections = jest.fn(async () => undefined)
 
   const registry: Record<string | symbol, any> = {
@@ -24,7 +32,7 @@ function makeContainer(order: Record<string, any> | undefined) {
 
   const container: any = {resolve: (key: string) => registry[key]}
 
-  return {container, updatePaymentCollections}
+  return {container, run, updatePaymentCollections}
 }
 
 const runHandler = (container: any, statusCode?: number) =>
@@ -36,8 +44,8 @@ const runHandler = (container: any, statusCode?: number) =>
 describe("payment-failed subscriber", () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it("marks the payment collection failed when no payment was captured", async () => {
-    const {container, updatePaymentCollections} = makeContainer({
+  it("marks the payment collection failed and cancels the order when no payment was captured", async () => {
+    const {container, run, updatePaymentCollections} = makeContainer({
       id: "order_1",
       payment_collections: [
         {
@@ -58,10 +66,36 @@ describe("payment-failed subscriber", () => {
     expect(updatePaymentCollections).toHaveBeenCalledWith("paycol_1", {
       status: PaymentCollectionStatus.FAILED,
     })
+    expect(run).toHaveBeenCalledWith({input: {order_id: "order_1"}})
+  })
+
+  it("marks a failed direct debit collection failed without cancelling the order", async () => {
+    const {container, run, updatePaymentCollections} = makeContainer({
+      id: "order_1",
+      payment_collections: [
+        {
+          status: PaymentCollectionStatus.AWAITING,
+          payments: [{captured_at: null}],
+          payment_sessions: [
+            {
+              provider_id: "pp_pay-direct-debit_pay",
+              payment_collection_id: "paycol_1",
+            },
+          ],
+        },
+      ],
+    })
+
+    await runHandler(container, PayPaymentStatus.FAILURE)
+
+    expect(updatePaymentCollections).toHaveBeenCalledWith("paycol_1", {
+      status: PaymentCollectionStatus.FAILED,
+    })
+    expect(run).not.toHaveBeenCalled()
   })
 
   it("skips a failure exchange when a payment was captured", async () => {
-    const {container, updatePaymentCollections} = makeContainer({
+    const {container, run, updatePaymentCollections} = makeContainer({
       id: "order_1",
       payment_collections: [
         {
@@ -80,10 +114,11 @@ describe("payment-failed subscriber", () => {
     await runHandler(container, PayPaymentStatus.FAILURE)
 
     expect(updatePaymentCollections).not.toHaveBeenCalled()
+    expect(run).not.toHaveBeenCalled()
   })
 
   it("reverses the captured payment on a chargeback so the order becomes payable again", async () => {
-    const {container, updatePaymentCollections} = makeContainer({
+    const {container, run, updatePaymentCollections} = makeContainer({
       id: "order_1",
       payment_collections: [
         {
@@ -111,6 +146,7 @@ describe("payment-failed subscriber", () => {
     })
     // The reversal marks the collection failed itself
     expect(updatePaymentCollections).not.toHaveBeenCalled()
+    expect(run).not.toHaveBeenCalled()
   })
 
   it("falls back to failing the collection on a chargeback when the Pay. session holds no captured payment", async () => {
@@ -139,11 +175,12 @@ describe("payment-failed subscriber", () => {
   })
 
   it("throws when no order matches the reference", async () => {
-    const {container, updatePaymentCollections} = makeContainer(undefined)
+    const {container, run, updatePaymentCollections} = makeContainer(undefined)
 
     await expect(
       runHandler(container, PayPaymentStatus.FAILURE)
     ).rejects.toThrow()
     expect(updatePaymentCollections).not.toHaveBeenCalled()
+    expect(run).not.toHaveBeenCalled()
   })
 })

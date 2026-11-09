@@ -7,9 +7,11 @@ import {
   PaymentCollectionStatus,
 } from "@medusajs/framework/utils"
 import {IPaymentModuleService} from "@medusajs/types"
+import {cancelOrderWorkflow} from "@medusajs/core-flows"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
 import {reverseCapturedPayment} from "../utils/reverseCapturedPayment"
 import {PayPaymentStatus} from "../providers/pay/core/constants"
+import {PaymentProviderKeys} from "../providers/pay/types"
 
 export default async function payPaymentFailedHandler({
   event: {data},
@@ -92,6 +94,19 @@ export default async function payPaymentFailedHandler({
 
     await paymentModuleService.updatePaymentCollections(paymentCollectionId, {
       status: PaymentCollectionStatus.FAILED,
+    })
+
+    // A failed direct debit is followed up through the direct debit exchanges
+    if (
+      payPaymentSession.provider_id.includes(PaymentProviderKeys.DIRECTDEBIT)
+    ) {
+      return
+    }
+
+    await cancelOrderWorkflow(container).run({
+      input: {
+        order_id: order.id,
+      },
     })
   } catch (e) {
     logger.error(e)
