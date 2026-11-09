@@ -3,10 +3,9 @@ import {SubscriberArgs, SubscriberConfig} from "@medusajs/framework"
 import {
   ContainerRegistrationKeys,
   MedusaError,
-  Modules,
   PaymentCollectionStatus,
 } from "@medusajs/framework/utils"
-import {IPaymentModuleService} from "@medusajs/types"
+import {cancelUnpaidOrder} from "../utils/cancelUnpaidOrder"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
 import {reverseCapturedPayment} from "../utils/reverseCapturedPayment"
 import {PayPaymentStatus} from "../providers/pay/core/constants"
@@ -17,9 +16,6 @@ export default async function payPaymentFailedHandler({
 }: SubscriberArgs<{id: string; statusCode?: number}>) {
   const logger = container.resolve("logger")
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const paymentModuleService = container.resolve<IPaymentModuleService>(
-    Modules.PAYMENT
-  )
 
   logger.info("Process failed Pay. payment")
 
@@ -90,9 +86,7 @@ export default async function payPaymentFailedHandler({
       return
     }
 
-    await paymentModuleService.updatePaymentCollections(paymentCollectionId, {
-      status: PaymentCollectionStatus.FAILED,
-    })
+    await cancelUnpaidOrder(container, order, "failed")
   } catch (e) {
     logger.error(e)
     throw e

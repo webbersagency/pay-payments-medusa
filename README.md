@@ -39,8 +39,7 @@ Don’t have an account with Pay. yet? [Register now!](https://signup.pay.nl/wel
 
 > [!WARNING]
 > This plugin creates orders in Medusa **immediately**, even if the payment has not yet been captured. If a payment
-> expires,
-> the associated order will be automatically canceled.
+> expires, is cancelled or fails, the associated order will be automatically canceled.
 >
 > This change in flow is required to support asynchronous payment methods (e.g., SprayPay), where payment confirmation
 > can take hours depending on customer input.
