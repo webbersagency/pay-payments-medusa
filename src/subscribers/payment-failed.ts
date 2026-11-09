@@ -3,15 +3,12 @@ import {SubscriberArgs, SubscriberConfig} from "@medusajs/framework"
 import {
   ContainerRegistrationKeys,
   MedusaError,
-  Modules,
   PaymentCollectionStatus,
 } from "@medusajs/framework/utils"
-import {IPaymentModuleService} from "@medusajs/types"
-import {cancelOrderWorkflow} from "@medusajs/core-flows"
+import {cancelUnpaidOrder} from "../utils/cancelUnpaidOrder"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
 import {reverseCapturedPayment} from "../utils/reverseCapturedPayment"
 import {PayPaymentStatus} from "../providers/pay/core/constants"
-import {PaymentProviderKeys} from "../providers/pay/types"
 
 export default async function payPaymentFailedHandler({
   event: {data},
@@ -19,9 +16,6 @@ export default async function payPaymentFailedHandler({
 }: SubscriberArgs<{id: string; statusCode?: number}>) {
   const logger = container.resolve("logger")
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const paymentModuleService = container.resolve<IPaymentModuleService>(
-    Modules.PAYMENT
-  )
 
   logger.info("Process failed Pay. payment")
 
@@ -92,22 +86,7 @@ export default async function payPaymentFailedHandler({
       return
     }
 
-    await paymentModuleService.updatePaymentCollections(paymentCollectionId, {
-      status: PaymentCollectionStatus.FAILED,
-    })
-
-    // A failed direct debit is followed up through the direct debit exchanges
-    if (
-      payPaymentSession.provider_id.includes(PaymentProviderKeys.DIRECTDEBIT)
-    ) {
-      return
-    }
-
-    await cancelOrderWorkflow(container).run({
-      input: {
-        order_id: order.id,
-      },
-    })
+    await cancelUnpaidOrder(container, order, "failed")
   } catch (e) {
     logger.error(e)
     throw e

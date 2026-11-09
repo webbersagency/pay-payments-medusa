@@ -1,17 +1,9 @@
 import {SubscriberArgs, SubscriberConfig} from "@medusajs/framework"
 
-import {
-  ContainerRegistrationKeys,
-  MedusaError,
-  Modules,
-  PaymentCollectionStatus,
-} from "@medusajs/framework/utils"
-import {cancelOrderWorkflow} from "@medusajs/core-flows"
-import {PaymentProviderKeys} from "../providers/pay/types"
-import getPayPaymentSession from "../utils/getPayPaymentSession"
-import {IPaymentModuleService} from "@medusajs/types"
+import {ContainerRegistrationKeys, MedusaError} from "@medusajs/framework/utils"
+import {cancelUnpaidOrder} from "../utils/cancelUnpaidOrder"
 
-export default async function paymentCapturedHandler({
+export default async function paymentCanceledHandler({
   event: {data},
   container,
 }: SubscriberArgs<{id: string}>) {
@@ -44,43 +36,7 @@ export default async function paymentCapturedHandler({
       )
     }
 
-    const payPaymentSession = getPayPaymentSession(order)
-
-    if (
-      payPaymentSession?.provider_id.includes(PaymentProviderKeys.DIRECTDEBIT)
-    ) {
-      const paymentModuleService = container.resolve<IPaymentModuleService>(
-        Modules.PAYMENT
-      )
-
-      await paymentModuleService.updatePaymentCollections(
-        payPaymentSession.payment_collection_id as string,
-        {
-          status: PaymentCollectionStatus.FAILED,
-        }
-      )
-    } else {
-      // A cancel exchange can arrive after the order was paid through another
-      // attempt, never cancel an order that has a captured payment.
-      const hasCapturedPayment = (order.payment_collections ?? []).some(
-        (pc) =>
-          pc.status === PaymentCollectionStatus.COMPLETED ||
-          (pc.payments ?? []).some((payment) => !!payment.captured_at)
-      )
-
-      if (hasCapturedPayment) {
-        logger.info(
-          `Skipping cancel for order ${order.id}, a captured payment exists`
-        )
-        return
-      }
-
-      await cancelOrderWorkflow(container).run({
-        input: {
-          order_id: order.id,
-        },
-      })
-    }
+    await cancelUnpaidOrder(container, order, "canceled")
   } catch (e) {
     logger.error(e)
     throw e
