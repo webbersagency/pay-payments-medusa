@@ -51,7 +51,7 @@ import {
 } from "../types"
 import {PayClient} from "./pay-client"
 import crypto from "crypto"
-import {PayPaymentStatus} from "./constants"
+import {PAY_MANUAL_LINK_KEY, PayPaymentStatus} from "./constants"
 import getExpirationForPaymentMethod from "../utils/getExpirationForPaymentMethod"
 
 /**
@@ -402,12 +402,19 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       this.debug_ &&
         this.logger_.info(
           `Pay. payment ${id} captured with amount ${
-            (input.data?.amount as BigNumberRawValue).currency_code
-          } ${(input.data?.amount as BigNumberRawValue).value}`
+            (input.data?.amount as BigNumberRawValue | undefined)?.currency_code
+          } ${(input.data?.amount as BigNumberRawValue | undefined)?.value}`
         )
 
+      // Medusa replaces the payment data with what capture returns, keep the
+      // manual link marker so the payment stays recognisable as one
+      const manualLink = data[PAY_MANUAL_LINK_KEY]
+
       return {
-        data: payment.data as unknown as Record<string, unknown>,
+        data: {
+          ...(payment.data as unknown as Record<string, unknown>),
+          ...(manualLink ? {[PAY_MANUAL_LINK_KEY]: manualLink} : {}),
+        },
       }
     } catch (error) {
       this.logger_.error(`Error capturing payment ${id}: ${error.message}`)
@@ -497,6 +504,15 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
 
     if (!id) {
       return {}
+    }
+
+    // A payment linked by hand was made outside this plugin (e.g. through a
+    // Pay. payment link), canceling it in Medusa must never abort it at Pay.
+    if (enriched[PAY_MANUAL_LINK_KEY]) {
+      this.logger_.info(
+        `Pay. payment ${id} was linked manually, not aborting it at Pay.`
+      )
+      return {data: enriched}
     }
 
     try {

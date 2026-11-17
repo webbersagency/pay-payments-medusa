@@ -6,6 +6,14 @@ export const PAY_CACHE_KEY = {
   SALES_CHANNEL_OPTIONS: "pay_sales_channel_options",
 } as const
 
+/**
+ * Key on a payment session's / payment's data that marks a Pay. payment an
+ * admin linked to the order by hand (e.g. one paid through a Pay. payment
+ * link). Such a payment was not created by this plugin: it is never aborted at
+ * Pay. and Pay. may not send exchanges for it. See utils/manualPayPaymentLink.
+ */
+export const PAY_MANUAL_LINK_KEY = "pay_manual_link"
+
 export const PayEnvironmentPaths = {
   REST_API: "https://rest.pay.nl/v2",
   REST_API_v3: "https://rest-api.pay.nl/v3",

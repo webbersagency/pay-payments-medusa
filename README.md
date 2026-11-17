@@ -55,6 +55,7 @@ Don’t have an account with Pay. yet? [Register now!](https://signup.pay.nl/wel
   - [Configuration Options](#configuration-options)
   - [Environment Variables](#environment-variables)
 - [Usage](#usage)
+  - [Linking a Pay. payment link to an order](#linking-a-pay-payment-link-to-an-order)
 - [Supported Payment Methods](#supported-payment-methods)
 - [Client-Side Integration](#client-side-integration)
   - [Duplicate cart endpoint](#duplicate-cart-endpoint)
@@ -293,6 +294,28 @@ processed synchronously, so the order refreshes right away. The switch is stored
 `GET /admin/pay/orders/:id/direct-debit` and `POST /admin/pay/orders/:id/direct-debit/exchange` (`{"action": "storno"}`),
 which only work while the switch and `testMode` are on; the switch itself is read and written through
 `GET`/`POST /admin/pay/settings` (`{"sepaTesting": true}`).
+
+### Linking a Pay. payment link to an order
+
+A payment made through a payment link created in the Pay. dashboard is not connected to any order. Admin users with
+`superadmin: true` in their user metadata can link such a payment to an order by its Pay. transaction or order id: the
+"Pay. payment links" panel in the order sidebar has a **Link payment** button that looks the payment up at Pay. and
+shows it before anything is changed.
+
+A payment is only linked when it is paid (or authorized, it is then captured at Pay.), not refunded, in the order's
+currency, not a test payment on a live shop, not already part of any order and not more than the order still owes (less
+is fine, the rest stays payable). Canceled orders and orders with another payment in progress (an `awaiting` or
+`authorized` payment collection) are refused. The payment is recorded as captured on the order's open payment
+collection (or a new one), with an order transaction and a `payment.captured` event like a regular payment. Refunds from
+the admin go through Pay. as usual.
+
+Pay. may not send exchanges for these payments, so the panel marks each one **Linked manually**, says who linked it and
+when, and warns that a chargeback or a refund made in the Pay. dashboard will not show up automatically. **Check with
+Pay.** fetches the live state and flags differences. Canceling such a payment in Medusa never aborts it at Pay.
+
+The panel is backed by `GET /admin/pay/orders/:id/linked-payments` (`?live=true` adds the Pay. state),
+`GET /admin/pay/orders/:id/link-payment?pay_id=…` (preview) and `POST /admin/pay/orders/:id/link-payment`
+(`{"pay_id": "…"}`, runs `linkPayPaymentToOrderWorkflow`).
 
 ## Supported Payment Methods
 
