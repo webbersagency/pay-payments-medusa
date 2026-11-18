@@ -578,7 +578,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     const id = input.data?.id as string
 
     try {
-      const {status} = await this.client_.getTransaction(id)
+      const {status} = await this.fetchPayPayment_(id)
 
       /**
        * Also see Pay. status codes: https://developer.pay.nl/docs/transaction-statuses#after-processing-statuses
@@ -626,6 +626,25 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
   }
 
   /**
+   * Looks a payment up at Pay.: the order API (TGU) first, the REST v2
+   * transaction as fallback. The TGU only keeps orders for 35 days, while
+   * the REST API refuses some payments the TGU does know (it answers 403 for
+   * orders of type "paylink"), so neither can be relied on alone.
+   * @param id - The Pay. order id
+   * @returns The Pay. order or transaction
+   */
+  protected async fetchPayPayment_(
+    id: string
+  ): Promise<GetTransactionFullResponse> {
+    return this.client_.getOrder(id).catch((error) => {
+      this.logger_.warn(
+        `getOrder failed for ${id}, falling back to getTransaction: ${error.message}`
+      )
+      return this.client_.getTransaction(id)
+    })
+  }
+
+  /**
    * Retrieves payment details, for payment data within 35 days.
    * Pay. Orders that are already PAID, will be on the GMS for 13 months.
    * Otherwise, it is available for 35 days on the TGU.
@@ -645,12 +664,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
     }
 
     try {
-      const data = await this.client_.getOrder(id).catch((error) => {
-        this.logger_.warn(
-          `getOrder failed for ${id}, falling back to getTransaction: ${error.message}`
-        )
-        return this.client_.getTransaction(id)
-      })
+      const data = await this.fetchPayPayment_(id)
 
       return {
         data: data as Record<string, any>,
