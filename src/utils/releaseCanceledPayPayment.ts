@@ -23,6 +23,7 @@ export type ReleasedPayPayment = {
   payment_session_id: string
   payment_collection_id: string
   payment_id: string | null
+  direct_debit: boolean
 }
 
 export type ReleaseCanceledPayPaymentResult = {
@@ -38,12 +39,18 @@ export type ReleaseCanceledPayPaymentResult = {
  * would stay "ready to be captured" forever and block the payment collection.
  * This cancels the Medusa payment, marks its session canceled and, when
  * nothing else is authorized on the collection, reopens it as `not_paid`, so
- * a new payment (link, mark as paid, manual link) can be made. Captured,
- * direct debit and manually linked payments are left alone. Idempotent.
+ * a new payment (link, mark as paid, manual link) can be made. Captured and
+ * manually linked payments are left alone. Idempotent.
+ *
+ * Direct debits are skipped unless `includeDirectDebit` is set: their webhooks
+ * are not final (a direct debit is followed up through the incasso
+ * exchanges), so only a canceled status Pay. just confirmed (on capture)
+ * releases one.
  */
 export async function releaseCanceledPayPayment(
   container: MedusaContainer,
-  payIds: string[]
+  payIds: string[],
+  {includeDirectDebit = false}: {includeDirectDebit?: boolean} = {}
 ): Promise<ReleaseCanceledPayPaymentResult> {
   const logger = container.resolve<Logger>(ContainerRegistrationKeys.LOGGER)
   const paymentModule = container.resolve<IPaymentModuleService>(
@@ -71,9 +78,12 @@ export async function releaseCanceledPayPayment(
   for (const session of sessions) {
     const data = (session.data ?? {}) as Record<string, unknown>
     const payment = session.payment
+    const isDirectDebit = session.provider_id.includes(
+      PaymentProviderKeys.DIRECTDEBIT
+    )
 
     if (
-      session.provider_id.includes(PaymentProviderKeys.DIRECTDEBIT) ||
+      (isDirectDebit && !includeDirectDebit) ||
       data[PAY_MANUAL_LINK_KEY] ||
       payment?.captured_at ||
       payment?.captures?.length
@@ -103,6 +113,7 @@ export async function releaseCanceledPayPayment(
       payment_session_id: session.id,
       payment_collection_id: session.payment_collection_id,
       payment_id: payment?.id ?? null,
+      direct_debit: isDirectDebit,
     })
   }
 

@@ -103,9 +103,50 @@ describe("releaseCanceledPayPayment", () => {
           payment_session_id: "payses_retry",
           payment_collection_id: "paycol_retry",
           payment_id: "pay_retry",
+          direct_debit: false,
         },
       ],
     })
+  })
+
+  it("releases a direct debit only when asked to", async () => {
+    const directDebit = hostedSession({
+      id: "payses_dd",
+      provider_id: "pp_pay-direct-debit_pay",
+      status: PaymentSessionStatus.AUTHORIZED,
+      payment: {id: "pay_dd", canceled_at: null, captured_at: null, captures: []},
+    })
+    const collection = {
+      id: "paycol_retry",
+      status: PaymentCollectionStatus.AWAITING,
+      payment_sessions: [{status: PaymentSessionStatus.CANCELED}],
+      payments: [{captured_at: null, captures: []}],
+    }
+
+    const skipped = makeContainer({sessions: [directDebit], collection})
+    await expect(
+      releaseCanceledPayPayment(skipped.container, [PAY_ID])
+    ).resolves.toMatchObject({released: []})
+    expect(skipped.paymentModule.cancelPayment).not.toHaveBeenCalled()
+
+    const released = makeContainer({sessions: [directDebit], collection})
+    const result = await releaseCanceledPayPayment(released.container, [PAY_ID], {
+      includeDirectDebit: true,
+    })
+
+    expect(released.paymentModule.cancelPayment).toHaveBeenCalledWith("pay_dd")
+    expect(released.paymentModule.updatePaymentCollections).toHaveBeenCalledWith(
+      "paycol_retry",
+      {status: PaymentCollectionStatus.NOT_PAID}
+    )
+    expect(result.released).toEqual([
+      {
+        payment_session_id: "payses_dd",
+        payment_collection_id: "paycol_retry",
+        payment_id: "pay_dd",
+        direct_debit: true,
+      },
+    ])
   })
 
   it("is idempotent for an already released payment", async () => {

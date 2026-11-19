@@ -10,7 +10,12 @@ import {
 export default async function paymentCanceledHandler({
   event: {data},
   container,
-}: SubscriberArgs<{id?: string; pay_order_ids?: string[]}>) {
+}: SubscriberArgs<{
+  id?: string
+  pay_order_ids?: string[]
+  /** Pay. confirmed the canceled status live (emitted on capture) */
+  verified?: boolean
+}>) {
   const logger = container.resolve("logger")
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
@@ -19,8 +24,19 @@ export default async function paymentCanceledHandler({
   try {
     // Void the canceled payment itself, so the order can be paid again
     const release = data.pay_order_ids?.length
-      ? await releaseCanceledPayPayment(container, data.pay_order_ids)
+      ? await releaseCanceledPayPayment(container, data.pay_order_ids, {
+          includeDirectDebit: data.verified === true,
+        })
       : null
+
+    // A released direct debit is done: the order stays, a new payment can be
+    // made on the reopened collection
+    if (release?.released.some((released) => released.direct_debit)) {
+      logger.info(
+        `Canceled Pay. direct debit ${data.pay_order_ids!.join(" / ")} released, keeping order #${data.id}`
+      )
+      return
+    }
 
     // Only the checkout payment the order was placed with ends the order. A
     // canceled retry (e.g. an expired payment link) just frees its collection.

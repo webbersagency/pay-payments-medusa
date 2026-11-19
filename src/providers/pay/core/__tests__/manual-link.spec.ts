@@ -103,6 +103,7 @@ describe("manually linked Pay. payments", () => {
         data: {
           id: "200192131",
           pay_order_ids: [PAY_ORDER_ID, "tgu-uuid-1", PAY_ORDER_ID],
+          verified: true,
         },
       },
       {}

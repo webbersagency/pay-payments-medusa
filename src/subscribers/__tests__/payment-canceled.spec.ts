@@ -142,7 +142,41 @@ describe("payment-canceled subscriber", () => {
       container,
     } as any)
 
-    expect(release).toHaveBeenCalledWith(container, ["3682804866Xf84b3"])
+    expect(release).toHaveBeenCalledWith(container, ["3682804866Xf84b3"], {
+      includeDirectDebit: false,
+    })
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it("releases a direct debit Pay. confirmed canceled and keeps the order", async () => {
+    const {container, run, updatePaymentCollections} = makeContainer({
+      id: "order_1",
+      payment_collections: [],
+    })
+    release.mockResolvedValueOnce({
+      payment_collection_ids: ["paycol_1"],
+      released: [
+        {
+          payment_session_id: "payses_dd",
+          payment_collection_id: "paycol_1",
+          payment_id: "pay_dd",
+          direct_debit: true,
+        },
+      ],
+    })
+
+    await paymentCanceledHandler({
+      event: {
+        data: {id: "1001", pay_order_ids: ["51234567890X1a2b"], verified: true},
+      },
+      container,
+    } as any)
+
+    expect(release).toHaveBeenCalledWith(container, ["51234567890X1a2b"], {
+      includeDirectDebit: true,
+    })
+    expect(isCheckout).not.toHaveBeenCalled()
+    expect(updatePaymentCollections).not.toHaveBeenCalled()
     expect(run).not.toHaveBeenCalled()
   })
 

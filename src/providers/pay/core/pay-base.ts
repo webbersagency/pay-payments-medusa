@@ -402,6 +402,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
             data: {
               id: payment.data.reference,
               pay_order_ids: [id, payment.data.id, payment.data.orderId],
+              verified: true,
             },
           },
           {}
