@@ -122,7 +122,10 @@ describe("PayBase.getWebhookActionAndData", () => {
 
     expect(result.action).toBe(PaymentActions.CANCELED)
     expect(emit).toHaveBeenCalledWith(
-      {name: "pay_payment.canceled", data: {id: REFERENCE}},
+      {
+        name: "pay_payment.canceled",
+        data: {id: REFERENCE, pay_order_ids: expect.any(Array)},
+      },
       {}
     )
   })
@@ -190,7 +193,11 @@ describe("PayBase.getWebhookActionAndData", () => {
     expect(emit).toHaveBeenCalledWith(
       {
         name: "pay_payment.failed",
-        data: {id: REFERENCE, statusCode: PayPaymentStatus.CHARGEBACK},
+        data: {
+          id: REFERENCE,
+          statusCode: PayPaymentStatus.CHARGEBACK,
+          pay_order_ids: expect.any(Array),
+        },
       },
       {}
     )

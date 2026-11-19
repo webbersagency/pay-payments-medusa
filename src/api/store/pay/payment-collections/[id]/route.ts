@@ -1,5 +1,9 @@
 import type { MedusaRequest, MedusaResponse } from '@medusajs/framework/http';
-import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
+import {
+  ContainerRegistrationKeys,
+  Modules,
+  PaymentSessionStatus,
+} from '@medusajs/framework/utils';
 import { IPaymentModuleService, PaymentSessionDTO } from '@medusajs/framework/types';
 import { OrderQueryResult, defaultCreatePayOrderFields } from "../../../../../utils"
 import { getPayServiceByProviderId } from "../../../../../providers/pay/services"
@@ -23,7 +27,14 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   // Check if payment collection already has a payment session with the provider
   const { data: checkPaymentCollections } = await query.graph({
     entity: 'payment_collection',
-    fields: ['id', 'amount', 'currency_code', 'payment_sessions.provider_id', 'payment_sessions.data'],
+    fields: [
+      'id',
+      'amount',
+      'currency_code',
+      'payment_sessions.provider_id',
+      'payment_sessions.status',
+      'payment_sessions.data',
+    ],
     filters: { id },
   });
 
@@ -31,8 +42,13 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.json({});
   }
 
+  // A session whose Pay. payment was canceled or expired can not be paid any
+  // more, a new one is created instead
   const existingPaymentCollection = checkPaymentCollections?.[0]?.payment_sessions?.find(
-    ps => ps?.provider_id === hostedCheckout
+    ps =>
+      ps?.provider_id === hostedCheckout &&
+      ps?.status !== PaymentSessionStatus.CANCELED &&
+      ps?.status !== PaymentSessionStatus.ERROR
   );
 
   if (existingPaymentCollection) {
@@ -40,7 +56,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   }
 
   // Create payment session for provider
-  await paymentModuleService.createPaymentSession(id, {
+  const createdPaymentSession = await paymentModuleService.createPaymentSession(id, {
     provider_id: hostedCheckout,
     amount: checkPaymentCollections?.[0]?.amount,
     currency_code: checkPaymentCollections?.[0]?.currency_code,
@@ -70,7 +86,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   }
 
   const paymentSession = paymentCollection?.payment_sessions?.find(
-    ps => ps?.provider_id === hostedCheckout
+    ps => ps?.id === createdPaymentSession.id
   ) as unknown as PaymentSessionDTO;
 
   if (!paymentSession) {

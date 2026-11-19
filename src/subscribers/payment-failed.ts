@@ -8,18 +8,52 @@ import {
 import {cancelUnpaidOrder} from "../utils/cancelUnpaidOrder"
 import getPayPaymentSession from "../utils/getPayPaymentSession"
 import {reverseCapturedPayment} from "../utils/reverseCapturedPayment"
+import {
+  isCheckoutPaymentCollection,
+  releaseCanceledPayPayment,
+} from "../utils/releaseCanceledPayPayment"
 import {PayPaymentStatus} from "../providers/pay/core/constants"
 
 export default async function payPaymentFailedHandler({
   event: {data},
   container,
-}: SubscriberArgs<{id: string; statusCode?: number}>) {
+}: SubscriberArgs<{
+  id: string
+  statusCode?: number
+  pay_order_ids?: string[]
+}>) {
   const logger = container.resolve("logger")
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
   logger.info("Process failed Pay. payment")
 
   try {
+    // A chargeback reverses a captured payment and is handled below. Any
+    // other failure voids the failed payment itself, and only ends the order
+    // when it was the checkout payment the order was placed with.
+    if (
+      data.statusCode !== PayPaymentStatus.CHARGEBACK &&
+      data.pay_order_ids?.length
+    ) {
+      const release = await releaseCanceledPayPayment(
+        container,
+        data.pay_order_ids
+      )
+
+      if (
+        release.payment_collection_ids.length &&
+        !(await isCheckoutPaymentCollection(
+          container,
+          release.payment_collection_ids
+        ))
+      ) {
+        logger.info(
+          `Failed Pay. payment ${data.pay_order_ids.join(" / ")} was not the checkout payment of order #${data.id}, keeping the order`
+        )
+        return
+      }
+    }
+
     const {
       data: [order],
     } = await query.graph({

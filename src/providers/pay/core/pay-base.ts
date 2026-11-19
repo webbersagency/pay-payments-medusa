@@ -392,6 +392,27 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
         },
       }).then((res) => res.status as PaymentSessionStatus)
 
+      if (status === PaymentSessionStatus.CANCELED) {
+        // Pay. canceled or expired the payment. Medusa would keep offering to
+        // capture it, so release it (cancel the Medusa payment, reopen the
+        // payment collection) through the canceled subscriber.
+        await this.eventBusService_.emit(
+          {
+            name: "pay_payment.canceled",
+            data: {
+              id: payment.data.reference,
+              pay_order_ids: [id, payment.data.id, payment.data.orderId],
+            },
+          },
+          {}
+        )
+
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          `Pay. payment ${id} was canceled or has expired at Pay. and can not be captured. It is being canceled in Medusa, reload the order to create a new payment.`
+        )
+      }
+
       if (status !== PaymentSessionStatus.CAPTURED) {
         throw new MedusaError(
           MedusaError.Types.INVALID_DATA,
@@ -706,7 +727,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
       }
     }
 
-    return {data: {}}
+    // Any other update (e.g. marking the session canceled) keeps the data
+    return {data: (input.data ?? {}) as Record<string, unknown>}
   }
 
   get keyMap(): Record<string, string> {
@@ -899,6 +921,8 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
                 data: {
                   // This will be the Order ID that has been set during the creation of the payment
                   id: payment.reference,
+                  // Identifies the payment session, an order can hold several
+                  pay_order_ids: [payment.id, payment.orderId],
                 },
               },
               {}
@@ -935,6 +959,7 @@ abstract class PayBase extends AbstractPaymentProvider<ProviderOptions> {
                 // This will be the Order ID that has been set during the creation of the payment
                 id: payment.reference,
                 statusCode: payment.status.code,
+                pay_order_ids: [payment.id, payment.orderId],
               },
             },
             {}

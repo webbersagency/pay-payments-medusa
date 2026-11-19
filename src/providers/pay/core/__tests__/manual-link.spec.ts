@@ -80,4 +80,44 @@ describe("manually linked Pay. payments", () => {
 
     expect(client.abortOrder).toHaveBeenCalledWith(PAY_ORDER_ID)
   })
+
+  it("release a payment Pay. canceled instead of capturing it", async () => {
+    const {service, client} = makeService()
+    const expired = {
+      id: "tgu-uuid-1",
+      orderId: PAY_ORDER_ID,
+      reference: "200192131",
+      status: {code: -80},
+    }
+    client.getOrder.mockResolvedValue(expired as any)
+    const emit = (service as any).eventBusService_.emit as jest.Mock
+
+    await expect(
+      service.capturePayment({data: {orderId: PAY_ORDER_ID}} as any)
+    ).rejects.toThrow(/canceled or has expired/)
+
+    expect(client.captureOrder).not.toHaveBeenCalled()
+    expect(emit).toHaveBeenCalledWith(
+      {
+        name: "pay_payment.canceled",
+        data: {
+          id: "200192131",
+          pay_order_ids: [PAY_ORDER_ID, "tgu-uuid-1", PAY_ORDER_ID],
+        },
+      },
+      {}
+    )
+  })
+
+  it("keep the session data on an update without payload", async () => {
+    const {service, client} = makeService()
+    ;(client as any).createOrder = jest.fn()
+
+    const result = await service.updatePayment({
+      data: {orderId: PAY_ORDER_ID},
+    } as any)
+
+    expect((client as any).createOrder).not.toHaveBeenCalled()
+    expect(result.data).toEqual({orderId: PAY_ORDER_ID})
+  })
 })

@@ -5,10 +5,22 @@ import {
 } from "@medusajs/framework/utils"
 import {cancelOrderWorkflow} from "@medusajs/core-flows"
 import paymentCanceledHandler from "../payment-canceled"
+import {
+  isCheckoutPaymentCollection,
+  releaseCanceledPayPayment,
+} from "../../utils/releaseCanceledPayPayment"
 
 jest.mock("@medusajs/core-flows", () => ({
   cancelOrderWorkflow: jest.fn(),
 }))
+
+jest.mock("../../utils/releaseCanceledPayPayment", () => ({
+  releaseCanceledPayPayment: jest.fn(),
+  isCheckoutPaymentCollection: jest.fn(),
+}))
+
+const release = releaseCanceledPayPayment as unknown as jest.Mock
+const isCheckout = isCheckoutPaymentCollection as unknown as jest.Mock
 
 function makeContainer(order: Record<string, any> | undefined) {
   const run = jest.fn(async () => undefined)
@@ -112,6 +124,52 @@ describe("payment-canceled subscriber", () => {
       status: PaymentCollectionStatus.FAILED,
     })
     expect(run).not.toHaveBeenCalled()
+  })
+
+  it("only releases a canceled retry payment and keeps the order", async () => {
+    const {container, run} = makeContainer({
+      id: "order_1",
+      payment_collections: [],
+    })
+    release.mockResolvedValueOnce({
+      payment_collection_ids: ["paycol_retry"],
+      released: [],
+    })
+    isCheckout.mockResolvedValueOnce(false)
+
+    await paymentCanceledHandler({
+      event: {data: {id: "1001", pay_order_ids: ["3682804866Xf84b3"]}},
+      container,
+    } as any)
+
+    expect(release).toHaveBeenCalledWith(container, ["3682804866Xf84b3"])
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it("releases and cancels the order for a canceled checkout payment", async () => {
+    const {container, run} = makeContainer({
+      id: "order_1",
+      payment_collections: [
+        {
+          status: PaymentCollectionStatus.NOT_PAID,
+          payments: [{captured_at: null}],
+          payment_sessions: [{provider_id: "pp_pay-ideal_pay"}],
+        },
+      ],
+    })
+    release.mockResolvedValueOnce({
+      payment_collection_ids: ["paycol_1"],
+      released: [],
+    })
+    isCheckout.mockResolvedValueOnce(true)
+
+    await paymentCanceledHandler({
+      event: {data: {id: "1001", pay_order_ids: ["51234567890X1a2b"]}},
+      container,
+    } as any)
+
+    expect(release).toHaveBeenCalled()
+    expect(run).toHaveBeenCalledWith({input: {order_id: "order_1"}})
   })
 
   it("throws when no order matches the reference", async () => {
